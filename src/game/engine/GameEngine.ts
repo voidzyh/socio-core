@@ -1,31 +1,115 @@
+/**
+ * GameEngine - 游戏引擎重构版
+ * 使用ECS架构（World + System）替代直接处理逻辑
+ */
+
+import { World } from '../../ecs/core/World';
+import { EntityFactory } from '../../ecs/utils/EntityFactory';
 import { useGameStore } from '../../store/gameStore';
+import { useUIStore } from '../../store/uiStore';
+import { usePersonStore } from '../../ecs/stores/PersonStore';
+import { useResourceStore } from '../../ecs/stores/ResourceStore';
+import { usePolicyStore } from '../../ecs/stores/PolicyStore';
+import { useStatisticsStore } from '../../ecs/stores/StatisticsStore';
 import { TimeSystem } from './TimeSystem';
 import { EventSystem } from './EventSystem';
 import { GameEndingSystem } from './GameEndingSystem';
-import { ResourceSystem } from '../resources/ResourceSystem';
-import { GAME_CONSTANTS, RESOURCE_CONSTANTS, POPULATION_CONSTANTS } from '../../constants/game';
-import { calculateDeathRate } from '../../constants/game';
+import { GAME_CONSTANTS } from '../../constants/game';
+
+// ECS Systems
+import { AgingSystem } from '../../ecs/systems/AgingSystem';
+import { DeathSystem } from '../../ecs/systems/DeathSystem';
+import { BirthSystem } from '../../ecs/systems/BirthSystem';
+import { MarriageSystem } from '../../ecs/systems/MarriageSystem';
+import { FoodSystem } from '../../ecs/systems/FoodSystem';
+import { MoneySystem } from '../../ecs/systems/MoneySystem';
+import { ShortageEffectSystem } from '../../ecs/systems/ShortageEffectSystem';
+import { PolicySystem } from '../../ecs/systems/PolicySystem';
+import { PolicyEffectSystem } from '../../ecs/systems/PolicyEffectSystem';
+import { StatisticsSystem } from '../../ecs/systems/StatisticsSystem';
+import { AchievementSystem } from '../../ecs/systems/AchievementSystem';
+import { PopulationSystem } from '../../ecs/systems/PopulationSystem';
 
 export class GameEngine {
+  // ECS核心
+  private world: World;
+  private entityFactory: EntityFactory;
+
+  // 原有系统（保留）
   private timeSystem: TimeSystem;
   private eventSystem: EventSystem;
   private endingSystem: GameEndingSystem;
+
+  // 游戏状态
   private animationFrameId: number | null = null;
   private isRunning: boolean = false;
-  private lastFrameTime: number = 0;
-  private ticksProcessed: number = 0; // 添加计数器
+  private ticksProcessed: number = 0;
 
   constructor() {
+    // 创建ECS World
+    this.world = new World();
+    this.entityFactory = new EntityFactory(this.world);
+
+    // 初始化原有系统
     this.timeSystem = new TimeSystem(() => this.onTick());
     this.eventSystem = new EventSystem();
     this.endingSystem = new GameEndingSystem();
+
+    // 初始化ECS Systems
+    this.initializeECSSystems();
+
+    // 同步初始人口到ECS
+    this.syncInitialPopulation();
+  }
+
+  /**
+   * 初始化所有ECS Systems
+   */
+  private initializeECSSystems(): void {
+    // 人口系统（按优先级排序）
+    this.world.addSystem(new AgingSystem());
+    this.world.addSystem(new DeathSystem());
+    this.world.addSystem(new BirthSystem());
+    this.world.addSystem(new MarriageSystem());
+    this.world.addSystem(new PopulationSystem());
+
+    // 资源系统
+    this.world.addSystem(new FoodSystem());
+    this.world.addSystem(new MoneySystem());
+    this.world.addSystem(new ShortageEffectSystem());
+
+    // 政策系统
+    this.world.addSystem(new PolicySystem());
+    this.world.addSystem(new PolicyEffectSystem());
+
+    // 统计和成就系统
+    this.world.addSystem(new StatisticsSystem());
+    this.world.addSystem(new AchievementSystem());
+  }
+
+  /**
+   * 同步初始人口到ECS World
+   * 从PersonStore获取人口数据并创建ECS实体
+   */
+  private syncInitialPopulation(): void {
+    const personStore = usePersonStore.getState();
+
+    // 确保人口已初始化
+    if (personStore.count === 0) {
+      personStore.initializePopulation();
+    }
+
+    // 为每个人创建ECS实体
+    const people = personStore.getAllPeople();
+    people.forEach(person => {
+      this.entityFactory.createPersonFromData(person);
+    });
   }
 
   start(): void {
     if (this.isRunning) return;
 
     this.isRunning = true;
-    this.lastFrameTime = performance.now();
     this.loop();
   }
 
@@ -50,6 +134,10 @@ export class GameEngine {
     this.animationFrameId = requestAnimationFrame(this.loop);
   }
 
+  /**
+   * 游戏主循环Tick - 重构版
+   * 将逻辑委托给ECS World
+   */
   private onTick(): void {
     const state = useGameStore.getState();
 
@@ -58,52 +146,36 @@ export class GameEngine {
       return;
     }
 
-    // 增加计数器
     this.ticksProcessed++;
 
-    // 前12个 tick 不检查结束条件，让游戏先运行一段时间
-    if (this.ticksProcessed < 12) {
-      // 检查随机事件
-      const randomEvent = this.eventSystem.checkAndTriggerEvent(state.totalMonths);
-      if (randomEvent) {
-        this.applyEvent(randomEvent);
-      }
+    // 前12个 tick 不检查结束条件
+    const skipEndingCheck = this.ticksProcessed < 12;
 
-      // 推进时间（1个月）
-      useGameStore.getState().advanceTime(1);
-
-      // 执行游戏逻辑
-      this.processPopulation();
-      this.processResources();
-      return;
-    }
-
-    // 检查随机事件
+    // 1. 检查随机事件
     const randomEvent = this.eventSystem.checkAndTriggerEvent(state.totalMonths);
     if (randomEvent) {
       this.applyEvent(randomEvent);
     }
 
-    // 记录当前年份，用于判断是否年份增加
-    const oldYear = state.currentYear;
-    const oldMonth = state.currentMonth;
-
-    // 推进时间（1个月）
+    // 2. 推进时间（1个月）
     useGameStore.getState().advanceTime(1);
 
-    // 执行游戏逻辑
-    this.processPopulation();
-    this.processResources();
+    // 3. 设置World的当前月份（用于System计算）
+    (this.world.getEventBus() as any).currentMonth = state.currentMonth + 1;
 
-    // 获取更新后的状态
-    const newState = useGameStore.getState();
+    // 4. 执行ECS Systems（核心逻辑）
+    this.world.update(1); // deltaTime = 1 month
 
-    // 只在月份变化后更新计数器和检查结束条件
-    if (newState.currentMonth !== oldMonth || newState.currentYear !== oldYear) {
-      // 更新失败条件计数器
+    // 5. 同步ECS状态到Store
+    this.syncFromECSToStores();
+
+    // 6. 更新UI
+    this.updateUIState();
+
+    // 7. 检查游戏结束条件
+    if (!skipEndingCheck) {
       this.updateFailureCounters();
-
-      // 检查游戏结束条件（只在月份变化后检查）
+      const newState = useGameStore.getState();
       const ending = this.endingSystem.checkEndingConditions(newState);
       if (ending) {
         this.triggerGameEnding(ending);
@@ -111,28 +183,84 @@ export class GameEngine {
     }
   }
 
+  /**
+   * 同步ECS状态到Store
+   * 将ECS World中的实体状态同步回PersonStore和ResourceStore
+   */
+  private syncFromECSToStores(): void {
+    const state = useGameStore.getState();
+
+    // 同步人口状态
+    const personStore = usePersonStore.getState();
+    const entities = this.world.getEntities();
+
+    const updates: Array<{ id: string; data: any }> = [];
+
+    entities.forEach(entity => {
+      const identity = this.world.getComponent('Identity', entity.id);
+      const biological = this.world.getComponent('Biological', entity.id);
+      const cognitive = this.world.getComponent('Cognitive', entity.id);
+      const relationship = this.world.getComponent('Relationship', entity.id);
+      const occupation = this.world.getComponent('Occupation', entity.id);
+
+      if (identity && biological) {
+        updates.push({
+          id: entity.id,
+          data: {
+            age: (state.currentMonth - identity.birthMonth) / 12,
+            health: biological.health,
+            fertility: biological.fertility,
+            isAlive: biological.isAlive,
+            education: cognitive?.education || 0,
+            partnerId: relationship?.partnerId,
+            children: relationship?.childrenIds ? Array.from(relationship.childrenIds) : [],
+            occupation: occupation?.occupation || 'unemployed',
+          },
+        });
+      }
+    });
+
+    if (updates.length > 0) {
+      personStore.batchUpdate(updates);
+    }
+
+    // 资源和统计由各自的System直接更新Store
+  }
+
+  /**
+   * 更新UI状态
+   */
+  private updateUIState(): void {
+    // 这里可以触发UI刷新事件
+    this.world.getEventBus().emit('ui:update', {
+      month: useGameStore.getState().currentMonth,
+    });
+  }
+
+  /**
+   * 更新失败条件计数器
+   */
   private updateFailureCounters(): void {
     const state = useGameStore.getState();
-    const { resources, statistics } = state;
+    const { resources } = state;
 
-    // 只在游戏已经开始后才检查
     if (!state.gameStarted) return;
 
-    // 更新负资产计数
+    // 更新各种计数器
     if (resources.money < 0) {
       useGameStore.setState({ negativeMoneyMonths: state.negativeMoneyMonths + 1 });
     } else {
       useGameStore.setState({ negativeMoneyMonths: 0 });
     }
 
-    // 更新缺粮计数
     if (resources.food <= 0) {
       useGameStore.setState({ noFoodMonths: state.noFoodMonths + 1 });
     } else {
       useGameStore.setState({ noFoodMonths: 0 });
     }
 
-    // 更新低幸福度计数（暂时用健康值代替）
+    // 使用统计Store中的平均健康
+    const statistics = useStatisticsStore.getState().statistics;
     if (statistics.averageHealth < 40) {
       useGameStore.setState({ lowHappinessMonths: state.lowHappinessMonths + 1 });
     } else {
@@ -140,6 +268,9 @@ export class GameEngine {
     }
   }
 
+  /**
+   * 触发游戏结束
+   */
   private triggerGameEnding(ending: any): void {
     useGameStore.setState({
       isGameOver: true,
@@ -148,23 +279,16 @@ export class GameEngine {
     this.pause();
   }
 
+  /**
+   * 应用事件效果
+   */
   private applyEvent(event: any): void {
     const state = useGameStore.getState();
-
-    // 应用事件效果
     const updates: any = {};
-
-    if (event.effects.deathRateChange) {
-      // 死亡率变化会在人口处理中应用
-    }
 
     if (event.effects.foodChange) {
       const foodChange = Math.floor(state.resources.food * event.effects.foodChange);
       updates.food = state.resources.food + foodChange;
-    }
-
-    if (event.effects.housingChange) {
-      updates.housing = Math.max(0, state.resources.housing + event.effects.housingChange);
     }
 
     if (event.effects.moneyChange) {
@@ -172,313 +296,36 @@ export class GameEngine {
     }
 
     if (Object.keys(updates).length > 0) {
-      useGameStore.getState().updateResources(updates);
+      useResourceStore.getState().updateResources(updates);
     }
 
-    // 添加事件到历史
     useGameStore.getState().addEventToHistory(
       `[${state.currentYear}年${state.currentMonth + 1}月] ${event.name}: ${event.description}`
     );
-  }
 
-  private processPopulation(): void {
-    const state = useGameStore.getState();
-    const people = Array.from(state.people.values()).filter(p => p.isAlive);
-
-    // 计算政策对生育率和死亡率的影响
-    let fertilityModifier = 0;
-    let deathModifier = 0;
-
-    state.activePolicies.forEach(policyId => {
-      const policy = state.policies.find(p => p.id === policyId);
-      if (policy) {
-        if (policy.effects.fertilityRate) fertilityModifier += policy.effects.fertilityRate;
-        if (policy.effects.deathRate) deathModifier += policy.effects.deathRate;
-      }
-    });
-
-    // 处理每个人口
-    people.forEach(person => {
-      // 年龄增长
-      useGameStore.getState().updatePerson(person.id, {
-        age: person.age + 1 / 12,
-      });
-
-      // 健康衰减
-      const newPerson = useGameStore.getState().people.get(person.id);
-      if (!newPerson) return;
-
-      let health = newPerson.health;
-      if (newPerson.age >= 80) {
-        health -= POPULATION_CONSTANTS.HEALTH_DECAY_AGE_80;
-      } else if (newPerson.age >= 60) {
-        health -= POPULATION_CONSTANTS.HEALTH_DECAY_AGE_60;
-      }
-
-      useGameStore.getState().updatePerson(person.id, { health: Math.max(0, health) });
-
-      // 检查死亡
-      const deathRate = calculateDeathRate(newPerson.age, newPerson.health) * (1 + deathModifier);
-      if (Math.random() < deathRate) {
-        this.handleDeath(newPerson.id);
-      }
-    });
-
-    // 处理生育（简化版：每个育龄女性有概率生育）
-    const females = people.filter(p => p.gender === 'female');
-    females.forEach(female => {
-      if (female.age >= POPULATION_CONSTANTS.MIN_AGE_FOR_CHILDBEARING &&
-          female.age <= POPULATION_CONSTANTS.MAX_AGE_FOR_CHILDBEARING &&
-          female.partner &&
-          female.children.length < POPULATION_CONSTANTS.MAX_CHILDREN_PER_FAMILY) {
-
-        const birthChance = 0.05 * (1 + fertilityModifier);
-        if (Math.random() < birthChance) {
-          this.handleBirth(female.id);
-        }
-      }
-    });
-
-    // 处理结婚
-    const singles = people.filter(p => !p.partner && p.age >= POPULATION_CONSTANTS.MIN_AGE_FOR_MARRIAGE && p.age <= POPULATION_CONSTANTS.MAX_AGE_FOR_MARRIAGE);
-    const singleMales = singles.filter(p => p.gender === 'male');
-    const singleFemales = singles.filter(p => p.gender === 'female');
-
-    // 简化的匹配逻辑
-    const pairs = Math.min(singleMales.length, singleFemales.length);
-    for (let i = 0; i < pairs; i++) {
-      if (Math.random() < 0.02) { // 2% 概率结婚
-        useGameStore.getState().updatePerson(singleMales[i].id, { partner: singleFemales[i].id });
-        useGameStore.getState().updatePerson(singleFemales[i].id, { partner: singleMales[i].id });
-      }
-    }
-  }
-
-  private handleBirth(motherId: string): void {
-    const state = useGameStore.getState();
-    const mother = state.people.get(motherId);
-    if (!mother || !mother.partner) return;
-
-    const father = state.people.get(mother.partner);
-    if (!father) return;
-
-    const gender = Math.random() < 0.5 ? 'male' : 'female';
-
-    const baby = {
-      id: `person-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-      age: 0,
-      gender,
-      health: 70 + Math.random() * 30,
-      education: 0,
-      fertility: 0,
-      isAlive: true,
-      parents: [motherId, father.id] as [string, string],
-      children: [],
-      occupation: 'unemployed' as const,
-    };
-
-    useGameStore.getState().addPerson(baby);
-
-    // 更新父母的子女列表
-    const newMotherChildren = [...mother.children, baby.id];
-    const newFatherChildren = [...father.children, baby.id];
-    useGameStore.getState().updatePerson(motherId, { children: newMotherChildren });
-    useGameStore.getState().updatePerson(father.id, { children: newFatherChildren });
-
-    // 更新统计
-    const stats = state.statistics;
-    stats.totalBirths++;
-
-    // 添加通知
-    useGameStore.getState().addEventToHistory(`新生儿诞生！性别: ${gender === 'male' ? '男' : '女'}`);
-  }
-
-  private handleDeath(personId: string): void {
-    const person = useGameStore.getState().people.get(personId);
-    if (!person) return;
-
-    useGameStore.getState().updatePerson(personId, { isAlive: false });
-
-    // 更新统计
-    const stats = useGameStore.getState().statistics;
-    stats.totalDeaths++;
-
-    // 移除配偶关系
-    if (person.partner) {
-      const partner = useGameStore.getState().people.get(person.partner);
-      if (partner) {
-        useGameStore.getState().updatePerson(person.partner, { partner: undefined });
-      }
-    }
-  }
-
-  private processResources(): void {
-    const state = useGameStore.getState();
-    const livingPeople = Array.from(state.people.values()).filter(p => p.isAlive);
-
-    // ========== 使用新的资源系统 ==========
-
-    // 1. 食物系统
-    const foodProduction = ResourceSystem.calculateFoodProduction(livingPeople);
-    const foodConsumption = ResourceSystem.calculateFoodConsumption(livingPeople);
-
-    // 季节性调整
-    const seasonalModifier = ResourceSystem.getSeasonalModifier(state.currentMonth);
-    const adjustedFoodProduction = Math.floor(foodProduction * seasonalModifier.food);
-
-    // 2. 资金系统
-    const moneyIncome = ResourceSystem.calculateMoneyIncome(livingPeople);
-    const unemployedCount = livingPeople.filter(p => p.occupation === 'unemployed').length;
-    const moneyExpense = ResourceSystem.calculateMoneyExpense(livingPeople, unemployedCount);
-
-    // 3. 教育系统
-    const educationConsumption = ResourceSystem.calculateEducationConsumption(livingPeople);
-
-    // 教育资源获得（可以通过资金购买或政策投入）
-    // 这里简化：每月自动获得一定量（模拟学校产出）
-    const teachers = livingPeople.filter(p => p.occupation === 'scientist').length;
-    const educationProduction = Math.max(0, teachers * 2); // 每个教师产生2教育资源
-
-    // 4. 医疗系统
-    const medicineConsumption = ResourceSystem.calculateMedicineConsumption(livingPeople);
-    const medicineProduction = Math.max(0, Math.ceil(livingPeople.filter(p => p.occupation === 'scientist').length * 0.5));
-
-    // 5. 住房系统
-    const housingNeeds = ResourceSystem.calculateHousingNeeds(livingPeople);
-
-    // ========== 计算政策影响 ==========
-    let policyFoodBonus = 0;
-    let policyMoneyBonus = 0;
-    let policyMedicineBonus = 0;
-
-    state.activePolicies.forEach(policyId => {
-      const policy = state.policies.find(p => p.id === policyId);
-      if (policy) {
-        if (policy.effects.foodProduction) {
-          policyFoodBonus += Math.floor(adjustedFoodProduction * policy.effects.foodProduction);
-        }
-        if (policy.effects.economy) {
-          policyMoneyBonus += Math.floor(100 * policy.effects.economy);
-        }
-        // 医疗政策减少消耗
-        if (policy.effects.medicineConsumption && policy.effects.medicineConsumption < 0) {
-          policyMedicineBonus += Math.floor(medicineConsumption * Math.abs(policy.effects.medicineConsumption));
-        }
-      }
-    });
-
-    // ========== 更新资源 ==========
-    const newFood = state.resources.food + adjustedFoodProduction + policyFoodBonus - foodConsumption;
-    const newMoney = state.resources.money + moneyIncome + policyMoneyBonus - moneyExpense;
-    const newMedicine = state.resources.medicine + medicineProduction + policyMedicineBonus - medicineConsumption;
-    const newEducation = state.resources.education + educationProduction - educationConsumption;
-
-    // 计算生产率（用于UI显示）
-    const researchProduction = livingPeople.filter(p => p.occupation === 'scientist').length * RESOURCE_CONSTANTS.RESEARCH_PER_SCIENTIST;
-
-    useGameStore.getState().updateResources({
-      food: Math.round(newFood * 10) / 10,
-      money: Math.round(newMoney * 10) / 10,
-      medicine: Math.round(newMedicine * 10) / 10,
-      education: Math.round(newEducation * 10) / 10,
-      productionRate: {
-        food: adjustedFoodProduction,
-        research: researchProduction,
-      },
-    });
-
-    // ========== 资源短缺影响 ==========
-    // 食物短缺影响健康
-    if (newFood < 0) {
-      this.applyFoodShortageEffect(livingPeople);
-    }
-
-    // 住房不足影响
-    if (state.resources.housing < housingNeeds) {
-      this.applyHousingShortageEffect(livingPeople);
-    }
-
-    // 医疗不足影响
-    if (newMedicine < 0) {
-      this.applyMedicineShortageEffect(livingPeople);
-    }
-
-    // 教育提升（自动）
-    this.applyEducationGrowth(livingPeople);
-  }
-
-  /**
-   * 食物短缺影响
-   */
-  private applyFoodShortageEffect(people: Person[]): void {
-    const shortageMonths = useGameStore.getState().noFoodMonths;
-
-    if (shortageMonths >= 3) {
-      // 健康值下降
-      people.forEach(person => {
-        const healthLoss = shortageMonths >= 6 ? 5 : 2;
-        useGameStore.getState().updatePerson(person.id, {
-          health: Math.max(0, person.health - healthLoss),
-        });
-      });
-    }
-  }
-
-  /**
-   * 住房不足影响
-   */
-  private applyHousingShortageEffect(people: Person[]): void {
-    // 住房不足导致健康下降
-    people.forEach(person => {
-      useGameStore.getState().updatePerson(person.id, {
-        health: Math.max(0, person.health - 0.5),
-      });
+    useUIStore.getState().addNotification({
+      message: event.name,
+      type: 'info',
     });
   }
 
   /**
-   * 医疗不足影响
+   * 重置游戏
    */
-  private applyMedicineShortageEffect(people: Person[]): void {
-    // 老年人和病人健康下降更快
-    people.forEach(person => {
-      if (person.age >= 60 || person.health < 40) {
-        useGameStore.getState().updatePerson(person.id, {
-          health: Math.max(0, person.health - 1),
-        });
-      }
-    });
-  }
-
-  /**
-   * 教育自动提升
-   */
-  private applyEducationGrowth(people: Person[]): void {
-    people.forEach(person => {
-      // 只有学生（6-18岁）才会自动提升教育
-      if (person.age >= 6 && person.age <= 18 && person.education < 10) {
-        const hasTeacher = people.some(p =>
-          p.isAlive &&
-          p.occupation === 'scientist' &&
-          p.id !== person.id
-        );
-
-        const hasResource = useGameStore.getState().resources.education > 0;
-
-        if (hasTeacher && hasResource) {
-          // 每月提升0.1教育
-          useGameStore.getState().updatePerson(person.id, {
-            education: Math.min(10, person.education + 0.1),
-          });
-        }
-      }
-    });
-  }
-
   destroy(): void {
     this.pause();
     this.ticksProcessed = 0;
     this.timeSystem.reset();
     this.eventSystem.reset();
+
+    // 清理World
+    // TODO: 添加World.cleanup()方法
+  }
+
+  /**
+   * 获取World实例（用于调试和外部访问）
+   */
+  getWorld(): World {
+    return this.world;
   }
 }
