@@ -183,6 +183,8 @@ interface GameActions {
 
   // 统计管理
   updateStatistics: () => void;
+  recordBirth: () => void;
+  recordDeath: () => void;
 
   // 成就管理
   checkAchievements: () => void;
@@ -369,6 +371,26 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
           ...state.statistics.resourceHistory,
           { year: state.currentYear, resources: state.resources },
         ],
+      },
+    });
+  },
+
+  recordBirth: () => {
+    const state = get();
+    set({
+      statistics: {
+        ...state.statistics,
+        totalBirths: state.statistics.totalBirths + 1,
+      },
+    });
+  },
+
+  recordDeath: () => {
+    const state = get();
+    set({
+      statistics: {
+        ...state.statistics,
+        totalDeaths: state.statistics.totalDeaths + 1,
       },
     });
   },

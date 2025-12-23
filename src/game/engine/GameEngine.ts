@@ -210,6 +210,7 @@ export class GameEngine {
     if (!father) return;
 
     const gender = Math.random() < 0.5 ? 'male' : 'female';
+    const genderText = gender === 'male' ? '男' : '女';
 
     const baby = {
       id: `person-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
@@ -235,6 +236,14 @@ export class GameEngine {
       children: [...father.children, baby.id]
     });
 
+    // 记录出生统计
+    useGameStore.getState().recordBirth();
+
+    // 添加事件
+    useGameStore.getState().addEventToHistory(
+      `[${state.currentYear}年${state.currentMonth + 1}月] ${mother.id}和${father.id}迎来了一个${genderText}孩`
+    );
+
     console.log('[handleBirth] New baby born:', baby.id, 'to', motherId, 'and', father.id);
   }
 
@@ -242,7 +251,21 @@ export class GameEngine {
    * 处理死亡
    */
   private handleDeath(personId: string): void {
+    const state = useGameStore.getState();
+    const person = state.people.get(personId);
+    if (!person) return;
+
     useGameStore.getState().updatePerson(personId, { isAlive: false });
+
+    // 记录死亡统计
+    useGameStore.getState().recordDeath();
+
+    // 添加事件
+    useGameStore.getState().addEventToHistory(
+      `[${state.currentYear}年${state.currentMonth + 1}月] ${personId}去世了，享年${Math.floor(person.age)}岁`
+    );
+
+    console.log('[handleDeath] Person died:', personId, 'age', Math.floor(person.age));
   }
 
   /**
