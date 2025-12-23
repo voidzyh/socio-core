@@ -3,7 +3,6 @@
  * ECS架构：使用World协调所有Systems
  */
 
-import { useGameStore } from '../../store/gameStore';
 import { useUIStore } from '../../store/uiStore';
 import { GAME_CONSTANTS } from '../../constants/game';
 import { TimeSystem } from './TimeSystem';
@@ -20,6 +19,8 @@ import { usePersonStore } from '../../ecs/stores/PersonStore';
 import { useResourceStore } from '../../ecs/stores/ResourceStore';
 import { useStatisticsStore } from '../../ecs/stores/StatisticsStore';
 import { useGameStateStore } from '../../ecs/stores/GameStateStore';
+import { useAchievementStore } from '../../ecs/stores/AchievementStore';
+import { useEventStore } from '../../ecs/stores/EventStore';
 
 // ECS Systems
 import {
@@ -105,15 +106,11 @@ export class GameEngine {
 
   /**
    * 初始化ECS人口
-   * 从gameStore读取初始人口并创建ECS实体
+   * 使用EntityFactory创建初始人口
    */
   private initializeECSPopulation(): void {
-    const state = useGameStore.getState();
-
-    // 遍历gameStore中的初始人口，为每个Person创建ECS实体
-    state.people.forEach((person: Person) => {
-      this.entityFactory.createPersonFromData(person);
-    });
+    // 使用EntityFactory创建初始人口（包含婚姻配对）
+    this.entityFactory.createInitialPopulation();
   }
 
   /**
@@ -158,6 +155,29 @@ export class GameEngine {
       useResourceStore.getState().updateShortageStatus({
         money: hasShortage,
       });
+    });
+
+    // 监听年度统计事件，检查成就
+    eventBus.on('statistics:yearly', (data: any) => {
+      const gameState = useGameStateStore.getState();
+      const resourceStore = useResourceStore.getState();
+      const statisticsStore = useStatisticsStore.getState();
+      const personStore = usePersonStore.getState();
+
+      const newUnlocked = useAchievementStore.getState().checkAchievements({
+        populationCount: personStore.count,
+        resources: resourceStore.resources,
+        statistics: statisticsStore.statistics,
+        currentYear: data.year,
+      });
+
+      // 通知新解锁的成就
+      if (newUnlocked.length > 0) {
+        useUIStore.getState().addNotification({
+          message: `解锁成就：${newUnlocked.length}个`,
+          type: 'achievement',
+        });
+      }
     });
   }
 
@@ -243,6 +263,7 @@ export class GameEngine {
     const personStore = usePersonStore.getState();
     const resourceStore = useResourceStore.getState();
     const statisticsStore = useStatisticsStore.getState();
+    const achievementStore = useAchievementStore.getState();
 
     return {
       currentYear: gameStateStore.currentYear,
@@ -255,7 +276,7 @@ export class GameEngine {
       negativeMoneyMonths: gameStateStore.negativeMoneyMonths,
       noFoodMonths: gameStateStore.noFoodMonths,
       lowHappinessMonths: gameStateStore.lowHappinessMonths,
-      unlockedAchievements: [], // TODO: AchievementStore
+      unlockedAchievements: achievementStore.unlockedAchievements,
       activePolicies: [], // TODO: PolicyStore
     };
   }
@@ -357,6 +378,7 @@ export class GameEngine {
    */
   private applyEvent(event: any): void {
     const resourceStore = useResourceStore.getState();
+    const gameStateStore = useGameStateStore.getState();
     const updates: any = {};
 
     if (event.effects.foodChange) {
@@ -372,11 +394,12 @@ export class GameEngine {
       useResourceStore.getState().updateResources(updates);
     }
 
-    // TODO: 添加事件到EventStore
-    // const gameStateStore = useGameStateStore.getState();
-    // useEventStore.getState().addEventToHistory(
-    //   `[${gameStateStore.currentYear}年${gameStateStore.currentMonth + 1}月] ${event.name}: ${event.description}`
-    // );
+    // 添加事件到EventStore
+    useEventStore.getState().addEvent(
+      gameStateStore.currentYear,
+      gameStateStore.currentMonth,
+      `[${gameStateStore.currentYear}年${gameStateStore.currentMonth + 1}月] ${event.name}: ${event.description}`
+    );
 
     useUIStore.getState().addNotification({
       message: event.name,
@@ -459,8 +482,10 @@ export class GameEngine {
     usePersonStore.getState().reset();
     useResourceStore.getState().reset();
     useStatisticsStore.getState().reset();
+    useAchievementStore.getState().reset();
+    useEventStore.getState().reset();
 
-    // 重新初始化ECS人口（从新的gameStore状态）
+    // 重新初始化ECS人口
     this.initializeECSPopulation();
 
     // 触发重置事件
