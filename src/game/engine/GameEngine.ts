@@ -83,8 +83,6 @@ export class GameEngine {
 
     this.ticksProcessed++;
 
-    console.log('[GameEngine] Tick #' + this.ticksProcessed + ', Month: ' + state.currentMonth);
-
     // 前12个 tick 不检查结束条件
     const skipEndingCheck = this.ticksProcessed < 12;
 
@@ -113,12 +111,6 @@ export class GameEngine {
         this.triggerGameEnding(ending);
       }
     }
-
-    console.log('[GameEngine] Resources after tick:', {
-      food: state.resources.food,
-      money: state.resources.money,
-      population: state.populationCount
-    });
   }
 
   /**
@@ -127,8 +119,6 @@ export class GameEngine {
   private processPopulation(): void {
     const state = useGameStore.getState();
     const people = Array.from(state.people.values()).filter(p => p.isAlive);
-
-    console.log('[processPopulation] Processing', people.length, 'living people');
 
     // 计算政策对生育率和死亡率的影响
     let fertilityModifier = 0;
@@ -141,9 +131,6 @@ export class GameEngine {
         if (policy.effects.deathRate) deathModifier += policy.effects.deathRate;
       }
     });
-
-    let deaths = 0;
-    let births = 0;
 
     // 处理每个人口
     people.forEach(person => {
@@ -169,7 +156,6 @@ export class GameEngine {
       const deathRate = this.calculateDeathRate(newPerson.age, newPerson.health) * (1 + deathModifier);
       if (Math.random() < deathRate) {
         this.handleDeath(newPerson.id);
-        deaths++;
       }
     });
 
@@ -180,12 +166,9 @@ export class GameEngine {
         const birthChance = 0.05 * (1 + fertilityModifier);
         if (Math.random() < birthChance) {
           this.handleBirth(female.id);
-          births++;
         }
       }
     });
-
-    console.log('[processPopulation] Population changes:', { deaths, births });
   }
 
   /**
@@ -243,8 +226,6 @@ export class GameEngine {
     useGameStore.getState().addEventToHistory(
       `[${state.currentYear}年${state.currentMonth + 1}月] ${mother.id}和${father.id}迎来了一个${genderText}孩`
     );
-
-    console.log('[handleBirth] New baby born:', baby.id, 'to', motherId, 'and', father.id);
   }
 
   /**
@@ -264,8 +245,6 @@ export class GameEngine {
     useGameStore.getState().addEventToHistory(
       `[${state.currentYear}年${state.currentMonth + 1}月] ${personId}去世了，享年${Math.floor(person.age)}岁`
     );
-
-    console.log('[handleDeath] Person died:', personId, 'age', Math.floor(person.age));
   }
 
   /**
@@ -276,20 +255,11 @@ export class GameEngine {
     const livingPeople = Array.from(state.people.values()).filter(p => p.isAlive);
     const currentMonth = state.currentMonth;
 
-    console.log('[processResources] Processing resources for', livingPeople.length, 'people');
-
     // 使用ResourceSystem计算资源
     const foodProduction = this.calculateFoodProduction(livingPeople);
     const foodConsumption = this.calculateFoodConsumption(livingPeople);
     const moneyIncome = this.calculateMoneyIncome(livingPeople);
     const moneyExpense = this.calculateMoneyExpense(livingPeople);
-
-    console.log('[processResources] Calculated:', {
-      foodProduction,
-      foodConsumption,
-      moneyIncome,
-      moneyExpense
-    });
 
     // 季节性调整
     const seasonalModifier = this.getSeasonalModifier(currentMonth);
@@ -314,13 +284,6 @@ export class GameEngine {
     // 计算新的资源值
     const newFood = state.resources.food + adjustedFoodProduction + policyFoodBonus - foodConsumption;
     const newMoney = state.resources.money + moneyIncome + policyMoneyBonus - moneyExpense;
-
-    console.log('[processResources] Updating resources:', {
-      oldFood: state.resources.food,
-      newFood,
-      oldMoney: state.resources.money,
-      newMoney
-    });
 
     // 更新资源
     useGameStore.getState().updateResources({
