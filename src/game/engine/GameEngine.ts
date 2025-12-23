@@ -367,9 +367,8 @@ export class GameEngine {
   /**
    * 触发游戏结束
    */
-  private triggerGameEnding(_ending: any): void {
-    useGameStateStore.getState().setGameOver(true);
-    // TODO: 存储gameEnding到GameStateStore
+  private triggerGameEnding(ending: any): void {
+    useGameStateStore.getState().setGameEnding(ending);
     this.pause();
   }
 

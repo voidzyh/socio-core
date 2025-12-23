@@ -1,10 +1,10 @@
 import React, { useEffect } from 'react';
-import { useGameStore } from '../../store/gameStore';
+import { useEventStore } from '../../ecs/stores/EventStore';
 import { useUIStore } from '../../store/uiStore';
 import './EventNotification.css';
 
 export const EventNotification: React.FC = () => {
-  const { eventHistory } = useGameStore();
+  const eventHistory = useEventStore(state => state.history);
   const { notifications } = useUIStore();
 
   return (
@@ -26,9 +26,9 @@ export const EventNotification: React.FC = () => {
         <div className="event-history">
           <h4 className="history-title">📜 事件记录</h4>
           <div className="history-list">
-            {eventHistory.slice(-10).reverse().map((event, index) => (
-              <div key={index} className="history-item">
-                {event}
+            {eventHistory.slice(-10).reverse().map((event) => (
+              <div key={event.id} className="history-item">
+                {event.message}
               </div>
             ))}
           </div>

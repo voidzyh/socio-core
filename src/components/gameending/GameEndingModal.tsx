@@ -1,9 +1,9 @@
 import React from 'react';
-import { useGameStore } from '../../store/gameStore';
+import { useGameStateStore } from '../../ecs/stores/GameStateStore';
 import './GameEndingModal.css';
 
 export const GameEndingModal: React.FC = () => {
-  const { gameEnding, resetGame } = useGameStore();
+  const { gameEnding, resetGame } = useGameStateStore();
 
   if (!gameEnding) return null;
 

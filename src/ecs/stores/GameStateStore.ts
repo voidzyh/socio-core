@@ -4,6 +4,7 @@
  */
 
 import { create } from 'zustand';
+import type { GameEnding } from '../../store/types';
 
 export type GameSpeed = 'paused' | '1x' | '2x' | '5x' | '10x';
 
@@ -25,6 +26,7 @@ interface GameStateState {
   negativeMoneyMonths: number;
   noFoodMonths: number;
   lowHappinessMonths: number;
+  gameEnding: GameEnding | null;
 }
 
 /**
@@ -37,6 +39,7 @@ interface GameStateActions {
   pauseGame: () => void;
   resetGame: () => void;
   setGameOver: (isOver: boolean) => void;
+  setGameEnding: (ending: GameEnding | null) => void;
 
   // 时间推进
   advanceTime: (months: number) => void;
@@ -63,6 +66,7 @@ function createInitialState(): GameStateState {
     negativeMoneyMonths: 0,
     noFoodMonths: 0,
     lowHappinessMonths: 0,
+    gameEnding: null,
   };
 }
 
@@ -95,6 +99,11 @@ export const useGameStateStore = create<GameStateState & GameStateActions>((set,
   // 设置游戏结束
   setGameOver: (isOver) => {
     set({ isGameOver: isOver });
+  },
+
+  // 设置游戏结局
+  setGameEnding: (ending) => {
+    set({ gameEnding: ending, isGameOver: ending !== null });
   },
 
   // 推进时间

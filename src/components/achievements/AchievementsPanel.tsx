@@ -1,9 +1,9 @@
 import React from 'react';
-import { useGameStore } from '../../store/gameStore';
+import { useAchievementStore } from '../../ecs/stores/AchievementStore';
 import './AchievementsPanel.css';
 
 export const AchievementsPanel: React.FC = () => {
-  const { achievements, unlockedAchievements } = useGameStore();
+  const { achievements, unlockedAchievements } = useAchievementStore();
 
   const lockedCount = achievements.length - unlockedAchievements.length;
 
