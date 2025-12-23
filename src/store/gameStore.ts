@@ -119,6 +119,10 @@ function createInitialStatistics(): GameStatistics {
 // 创建初始状态
 function createInitialState(): GameState {
   const people = createInitialPopulation();
+
+  // 只统计存活人口
+  const livingCount = Array.from(people.values()).filter(p => p.isAlive).length;
+
   return {
     currentYear: 0,
     currentMonth: 0,
@@ -126,7 +130,7 @@ function createInitialState(): GameState {
     gameSpeed: 'paused',
 
     people,
-    populationCount: people.size,
+    populationCount: livingCount,
 
     resources: createInitialResources(),
 
@@ -227,9 +231,13 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     const state = get();
     const newPeople = new Map(state.people);
     newPeople.set(person.id, person);
+
+    // 只统计存活人口
+    const livingCount = Array.from(newPeople.values()).filter(p => p.isAlive).length;
+
     set({
       people: newPeople,
-      populationCount: newPeople.size,
+      populationCount: livingCount,
     });
   },
 
@@ -250,10 +258,22 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
 
     const newPeople = new Map(state.people);
     newPeople.set(id, { ...person, ...updates });
-    set({ people: newPeople });
+
+    // 如果更新了isAlive状态，需要重新计算populationCount
+    const wasAlive = person.isAlive;
+    const isAlive = updates.isAlive !== undefined ? updates.isAlive : wasAlive;
+
+    // 只统计存活人口
+    const livingCount = Array.from(newPeople.values()).filter(p => p.isAlive).length;
+
+    set({ people: newPeople, populationCount: livingCount });
   },
 
-  setPeople: (people) => set({ people, populationCount: people.size }),
+  setPeople: (people) => {
+    // 只统计存活人口
+    const livingCount = Array.from(people.values()).filter(p => p.isAlive).length;
+    set({ people, populationCount: livingCount });
+  },
 
   // 资源管理
   updateResources: (updates) => {
