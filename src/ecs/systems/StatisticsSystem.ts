@@ -57,7 +57,7 @@ export class StatisticsSystem extends System {
   private recordYearStatistics(world: World, year: number): void {
     const entities = world.query(this.peopleQuery);
     const livingPeople = entities.filter(entity => {
-      const biological = world.getComponent(ComponentType.Biological, entity.id);
+      const biological = world.getComponent(entity.id, ComponentType.Biological);
       return biological?.isAlive;
     });
 
@@ -81,7 +81,7 @@ export class StatisticsSystem extends System {
   private updateRealtimeStats(world: World): void {
     const entities = world.query(this.peopleQuery);
     const livingPeople = entities.filter(entity => {
-      const biological = world.getComponent(ComponentType.Biological, entity.id);
+      const biological = world.getComponent(entity.id, ComponentType.Biological);
       return biological?.isAlive;
     });
 
@@ -90,7 +90,7 @@ export class StatisticsSystem extends System {
     // 计算平均年龄
     const currentMonth = this.getCurrentMonth(world);
     const ages = livingPeople.map(entity => {
-      const identity = world.getComponent(ComponentType.Identity, entity.id);
+      const identity = world.getComponent(entity.id, ComponentType.Identity);
       return this.calculateAge(identity?.birthMonth || 0, currentMonth);
     });
 
@@ -98,7 +98,7 @@ export class StatisticsSystem extends System {
 
     // 计算平均健康
     const healthValues = livingPeople.map(entity => {
-      const biological = world.getComponent(ComponentType.Biological, entity.id);
+      const biological = world.getComponent(entity.id, ComponentType.Biological);
       return biological?.health || 0;
     });
 
@@ -106,7 +106,7 @@ export class StatisticsSystem extends System {
 
     // 计算平均教育
     const educationValues = livingPeople.map(entity => {
-      const cognitive = world.getComponent(ComponentType.Cognitive, entity.id);
+      const cognitive = world.getComponent(entity.id, ComponentType.Cognitive);
       return cognitive?.education || 0;
     });
 

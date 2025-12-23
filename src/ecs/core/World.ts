@@ -3,7 +3,8 @@
  * 协调所有实体、组件和系统
  */
 
-import type { Entity, EntityID, ComponentType, Component } from './Entity';
+import { Entity } from './Entity';
+import type { EntityID, ComponentType, Component } from './Entity';
 import type { ISystem } from './System';
 import type { Query } from './Query';
 import { EventBus } from './EventBus';

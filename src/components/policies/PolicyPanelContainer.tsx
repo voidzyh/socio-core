@@ -4,7 +4,8 @@
  */
 
 import React from 'react';
-import { PolicyPanel, PolicyPanelProps } from './PolicyPanel';
+import { PolicyPanel } from './PolicyPanel';
+import type { PolicyPanelProps } from './PolicyPanel';
 import { useAllPolicies, useActivePolicies } from '../../ecs/selectors/policySelectors';
 import { useMoney } from '../../ecs/selectors/resourceSelectors';
 import { usePolicyStore } from '../../ecs/stores/PolicyStore';

@@ -344,7 +344,7 @@ export class PopulationSystem extends System implements ISystem {
    * 计算年龄
    */
   private calculateAge(birthMonth: number, currentMonth: number): number {
-    return currentMonth - birthMonth / GAME_CONSTANTS.MONTHS_PER_YEAR;
+    return (currentMonth - birthMonth) / GAME_CONSTANTS.MONTHS_PER_YEAR;
   }
 
   /**

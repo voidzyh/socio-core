@@ -265,7 +265,7 @@ export class ResourceSystem extends System {
     // 简化实现：降低所有人健康值
     // 实际应该根据短缺月份累计
     entities.forEach(entity => {
-      const biological = world.getComponent(ComponentType.Biological, entity.id);
+      const biological = world.getComponent(entity.id, ComponentType.Biological);
       if (biological && biological.isAlive) {
         const newHealth = Math.max(0, biological.health - 2);
         world.updateComponent(entity.id, ComponentType.Biological, { health: newHealth });
@@ -283,8 +283,8 @@ export class ResourceSystem extends System {
    */
   private applyMedicineShortageEffect(world: World, entities: any[]): void {
     entities.forEach(entity => {
-      const biological = world.getComponent(ComponentType.Biological, entity.id);
-      const identity = world.getComponent(ComponentType.Identity, entity.id);
+      const biological = world.getComponent(entity.id, ComponentType.Biological);
+      const identity = world.getComponent(entity.id, ComponentType.Identity);
 
       if (!biological || !identity || !biological.isAlive) return;
 
@@ -308,7 +308,7 @@ export class ResourceSystem extends System {
    */
   private applyHousingShortageEffect(world: World, entities: any[]): void {
     entities.forEach(entity => {
-      const biological = world.getComponent(ComponentType.Biological, entity.id);
+      const biological = world.getComponent(entity.id, ComponentType.Biological);
       if (biological && biological.isAlive) {
         const newHealth = Math.max(0, biological.health - 0.5);
         world.updateComponent(entity.id, ComponentType.Biological, { health: newHealth });
@@ -328,9 +328,9 @@ export class ResourceSystem extends System {
     const currentMonth = this.getCurrentMonth(world);
 
     entities.forEach(entity => {
-      const cognitive = world.getComponent(ComponentType.Cognitive, entity.id);
-      const biological = world.getComponent(ComponentType.Biological, entity.id);
-      const identity = world.getComponent(ComponentType.Identity, entity.id);
+      const cognitive = world.getComponent(entity.id, ComponentType.Cognitive);
+      const biological = world.getComponent(entity.id, ComponentType.Biological);
+      const identity = world.getComponent(entity.id, ComponentType.Identity);
 
       if (!cognitive || !biological || !identity || !biological.isAlive) return;
 

@@ -4,7 +4,8 @@
  */
 
 import React from 'react';
-import { PopulationCanvas, PopulationCanvasProps } from './PopulationCanvas';
+import { PopulationCanvas } from './PopulationCanvas';
+import type { PopulationCanvasProps } from './PopulationCanvas';
 import { useUIStore } from '../../store/uiStore';
 import { useLivingPeople, usePopulationCount } from '../../ecs/selectors/personSelectors';
 import { usePersonStore } from '../../ecs/stores/PersonStore';

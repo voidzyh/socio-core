@@ -4,7 +4,8 @@
  */
 
 import React, { useMemo } from 'react';
-import { StatsPanel, StatsPanelProps } from './StatsPanel';
+import { StatsPanel } from './StatsPanel';
+import type { StatsPanelProps } from './StatsPanel';
 import { usePopulationCount, useAgeGroups, useLivingPeople } from '../../ecs/selectors/personSelectors';
 import { useStatisticsStore } from '../../ecs/stores/StatisticsStore';
 import { useGameStore } from '../../store/gameStore';

@@ -75,7 +75,7 @@ export class AchievementSystem extends System {
   private checkPopulation100(world: World): boolean {
     const entities = world.getEntities();
     const livingCount = entities.filter(entity => {
-      const biological = world.getComponent('Biological', entity.id);
+      const biological = world.getComponent(entity.id, 'Biological');
       return biological?.isAlive;
     }).length;
 
@@ -91,8 +91,8 @@ export class AchievementSystem extends System {
 
     // 检查是否有人年龄超过80岁
     const hasElderly = entities.some(entity => {
-      const identity = world.getComponent('Identity', entity.id);
-      const biological = world.getComponent('Biological', entity.id);
+      const identity = world.getComponent(entity.id, 'Identity');
+      const biological = world.getComponent(entity.id, 'Biological');
 
       if (!identity || !biological || !biological.isAlive) return false;
 

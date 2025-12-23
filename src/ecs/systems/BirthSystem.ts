@@ -149,14 +149,13 @@ export class BirthSystem extends System {
    * 更新父母的子女列表
    */
   private updateParentChildren(world: World, parentId: string, babyId: string): void {
-    const relationship = world.getComponent<RelationshipComponent>(parentId, ComponentType.Relationship);
+    const relationship = world.getComponent<RelationshipComponent>(
+      parentId,
+      ComponentType.Relationship
+    );
 
-    if (relationship) {
-      const newChildren = new Set(relationship.childrenIds);
-      newChildren.add(baby.id);
-      world.updateComponent(parentId, ComponentType.Relationship, {
-        childrenIds: newChildren,
-      });
+    if (relationship && relationship.childrenIds) {
+      relationship.childrenIds.add(babyId);
     }
   }
 
