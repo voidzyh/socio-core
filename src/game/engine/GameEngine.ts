@@ -159,9 +159,7 @@ export class GameEngine {
 
     // 监听年度统计事件，检查成就并更新历史
     eventBus.on('statistics:yearly', (data: any) => {
-      const gameState = useGameStateStore.getState();
       const resourceStore = useResourceStore.getState();
-      const statisticsStore = useStatisticsStore.getState();
       const personStore = usePersonStore.getState();
 
       // 更新年度统计数据到StatisticsStore
@@ -174,7 +172,7 @@ export class GameEngine {
       const newUnlocked = useAchievementStore.getState().checkAchievements({
         populationCount: personStore.count,
         resources: resourceStore.resources,
-        statistics: statisticsStore.statistics,
+        statistics: useStatisticsStore.getState().statistics,
         currentYear: data.year,
       });
 
@@ -185,15 +183,6 @@ export class GameEngine {
           type: 'achievement',
         });
       }
-    });
-
-    // 监听实时统计更新事件
-    eventBus.on('statistics:updated', (data: any) => {
-      useStatisticsStore.getState().updateRealtimeStats({
-        avgAge: data.avgAge,
-        avgHealth: data.avgHealth,
-        avgEducation: data.avgEducation,
-      });
     });
   }
 
@@ -269,6 +258,17 @@ export class GameEngine {
 
     // 更新ECS PersonStore
     usePersonStore.getState().setPeople(peopleMap);
+
+    // 同步StatisticsSystem的实时数据到StatisticsStore
+    const statisticsSystem = this.world.getSystem<any>('StatisticsSystem');
+    if (statisticsSystem) {
+      const stats = statisticsSystem.getStatistics();
+      useStatisticsStore.getState().updateRealtimeStats({
+        avgAge: stats.averageAge,
+        avgHealth: stats.averageHealth,
+        avgEducation: stats.averageEducation,
+      });
+    }
   }
 
   /**

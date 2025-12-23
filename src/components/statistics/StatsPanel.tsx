@@ -142,7 +142,9 @@ export const StatsPanel: React.FC<StatsPanelProps> = ({
               outerRadius={60}
               paddingAngle={5}
               dataKey="value"
-              isAnimationActive={false}
+              isAnimationActive={true}
+              animationDuration={500}
+              animationBegin={0}
             >
               {ageGroupArray.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={entry.color} />
