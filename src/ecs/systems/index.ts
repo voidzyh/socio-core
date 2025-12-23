@@ -14,3 +14,11 @@ export * from './ResourceSystem';
 export * from './FoodSystem';
 export * from './MoneySystem';
 export * from './ShortageEffectSystem';
+
+// 政策系统
+export * from './PolicySystem';
+export * from './PolicyEffectSystem';
+
+// 统计与成就
+export * from './StatisticsSystem';
+export * from './AchievementSystem';
