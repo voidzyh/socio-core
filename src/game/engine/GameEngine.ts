@@ -157,12 +157,19 @@ export class GameEngine {
       });
     });
 
-    // 监听年度统计事件，检查成就
+    // 监听年度统计事件，检查成就并更新历史
     eventBus.on('statistics:yearly', (data: any) => {
       const gameState = useGameStateStore.getState();
       const resourceStore = useResourceStore.getState();
       const statisticsStore = useStatisticsStore.getState();
       const personStore = usePersonStore.getState();
+
+      // 更新年度统计数据到StatisticsStore
+      useStatisticsStore.getState().updateStatistics(
+        data.year,
+        personStore.count,
+        resourceStore.resources
+      );
 
       const newUnlocked = useAchievementStore.getState().checkAchievements({
         populationCount: personStore.count,
@@ -178,6 +185,15 @@ export class GameEngine {
           type: 'achievement',
         });
       }
+    });
+
+    // 监听实时统计更新事件
+    eventBus.on('statistics:updated', (data: any) => {
+      useStatisticsStore.getState().updateRealtimeStats({
+        avgAge: data.avgAge,
+        avgHealth: data.avgHealth,
+        avgEducation: data.avgEducation,
+      });
     });
   }
 
