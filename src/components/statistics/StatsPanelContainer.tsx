@@ -6,8 +6,6 @@
 import React, { useMemo } from 'react';
 import { StatsPanel } from './StatsPanel';
 import type { StatsPanelProps } from './StatsPanel';
-import { usePopulationCount, useAgeGroups, useLivingPeople } from '../../ecs/selectors/personSelectors';
-import { useStatisticsStore } from '../../ecs/stores/StatisticsStore';
 import { useGameStore } from '../../store/gameStore';
 
 /**
@@ -15,16 +13,23 @@ import { useGameStore } from '../../store/gameStore';
  * 容器组件，负责数据获取和状态管理
  */
 export const StatsPanelContainer: React.FC = () => {
-  // 使用Selector获取数据
-  const populationCount = usePopulationCount();
-  const ageGroups = useAgeGroups();
-  const livingPeople = useLivingPeople();
+  // 从gameStore获取数据（ECS暂未集成）
+  const { people, populationCount, currentYear, statistics } = useGameStore();
 
-  // 统计数据
-  const statistics = useStatisticsStore(state => state.statistics);
+  // 计算存活人口
+  const livingPeople = useMemo(
+    () => Array.from(people.values()).filter(p => p.isAlive),
+    [people]
+  );
 
-  // 当前年份（从gameStore获取，暂时保留）
-  const { currentYear } = useGameStore();
+  // 计算年龄组
+  const ageGroups = useMemo(() => {
+    const children = livingPeople.filter(p => p.age < 18).length;
+    const adults = livingPeople.filter(p => p.age >= 18 && p.age < 60).length;
+    const elderly = livingPeople.filter(p => p.age >= 60).length;
+
+    return { children, adults, elderly };
+  }, [livingPeople]);
 
   // 构造年龄组数据
   const ageGroupData = useMemo(() => ({

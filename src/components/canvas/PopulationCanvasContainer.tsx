@@ -7,24 +7,27 @@ import React from 'react';
 import { PopulationCanvas } from './PopulationCanvas';
 import type { PopulationCanvasProps } from './PopulationCanvas';
 import { useUIStore } from '../../store/uiStore';
-import { useLivingPeople, usePopulationCount } from '../../ecs/selectors/personSelectors';
-import { usePersonStore } from '../../ecs/stores/PersonStore';
+import { useGameStore } from '../../store/gameStore';
 
 /**
  * PopulationCanvasContainer
  * 容器组件，负责数据获取和状态管理
  */
 export const PopulationCanvasContainer: React.FC = () => {
-  // 使用Selector获取数据
-  const livingPeople = useLivingPeople();
-  const populationCount = usePopulationCount();
-  const { count: totalCount } = usePersonStore();
+  // 从gameStore获取数据（ECS暂未集成）
+  const { people, populationCount } = useGameStore();
+
+  // 计算存活人口
+  const livingPeople = React.useMemo(
+    () => Array.from(people.values()).filter(p => p.isAlive),
+    [people]
+  );
+
+  // 计算死亡人数
+  const deadCount = people.size - populationCount;
 
   // UI状态和交互
   const { hoveredPerson, selectPerson, hoverPerson } = useUIStore();
-
-  // 计算死亡人数
-  const deadCount = totalCount - populationCount;
 
   // 传递给展示组件的props
   const props: PopulationCanvasProps = {
