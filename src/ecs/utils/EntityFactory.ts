@@ -49,6 +49,7 @@ export class EntityFactory {
     // 创建Cognitive组件
     const cognitive: CognitiveComponent = {
       education: person.education,
+      skills: new Set(),
     };
 
     // 创建Relationship组件
@@ -61,6 +62,7 @@ export class EntityFactory {
     // 创建Occupation组件
     const occupation: OccupationComponent = {
       occupation: person.occupation,
+      experience: 0,
       productivity: 1.0,
     };
 
@@ -99,6 +101,7 @@ export class EntityFactory {
     // Cognitive
     const cognitive: CognitiveComponent = {
       education: 0,
+      skills: new Set(),
     };
 
     // Relationship
@@ -110,6 +113,7 @@ export class EntityFactory {
     // Occupation
     const occupation: OccupationComponent = {
       occupation: 'unemployed',
+      experience: 0,
       productivity: 0,
     };
 
@@ -140,11 +144,13 @@ export class EntityFactory {
   }
 
   /**
-   * 创建初始人口
+   * 创建初始人口（增强版 - 包含婚姻配对）
    */
   createInitialPopulation(): string[] {
     const entityIds: string[] = [];
     const genders: Array<'male' | 'female'> = ['male', 'female'];
+    const males: string[] = [];
+    const females: string[] = [];
 
     // 职业分配
     const occupationDistribution: Array<'farmer' | 'worker' | 'scientist' | 'unemployed'> = [];
@@ -157,6 +163,12 @@ export class EntityFactory {
     for (let i = 0; i < workerCount; i++) occupationDistribution.push('worker');
     for (let i = 0; i < scientistCount; i++) occupationDistribution.push('scientist');
     for (let i = 0; i < unemployedCount; i++) occupationDistribution.push('unemployed');
+
+    // 打乱顺序
+    for (let i = occupationDistribution.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [occupationDistribution[i], occupationDistribution[j]] = [occupationDistribution[j], occupationDistribution[i]];
+    }
 
     // 创建人口
     for (let i = 0; i < GAME_CONSTANTS.INITIAL_POPULATION; i++) {
@@ -190,10 +202,12 @@ export class EntityFactory {
       // Cognitive
       const cognitive: CognitiveComponent = {
         education,
+        skills: new Set(),
       };
 
       // Relationship
       const relationship: RelationshipComponent = {
+        partnerId: undefined,
         parentIds: null,
         childrenIds: new Set(),
       };
@@ -201,6 +215,7 @@ export class EntityFactory {
       // Occupation
       const occupationComp: OccupationComponent = {
         occupation,
+        experience: 0,
         productivity: 1.0,
       };
 
@@ -211,8 +226,105 @@ export class EntityFactory {
       this.world.addComponent(entity.id, ComponentType.Occupation, occupationComp);
 
       entityIds.push(entity.id);
+
+      if (gender === 'male') {
+        males.push(entity.id);
+      } else {
+        females.push(entity.id);
+      }
     }
 
+    // 配对婚姻
+    this.pairMarriages(males, females);
+
     return entityIds;
+  }
+
+  /**
+   * 配对婚姻
+   */
+  private pairMarriages(males: string[], females: string[]): void {
+    // 筛选适婚年龄
+    const currentMonth = 0;
+
+    const marriageAgeMales = males.filter(id => {
+      const identity = this.world.getComponent<IdentityComponent>(id, ComponentType.Identity);
+      const age = this.calculateAge(identity!.birthMonth, currentMonth);
+      return age >= 20 && age <= 50;
+    });
+
+    const marriageAgeFemales = females.filter(id => {
+      const identity = this.world.getComponent<IdentityComponent>(id, ComponentType.Identity);
+      const age = this.calculateAge(identity!.birthMonth, currentMonth);
+      return age >= 20 && age <= 45;
+    });
+
+    // 配对
+    const pairs = Math.min(marriageAgeMales.length, marriageAgeFemales.length);
+    for (let i = 0; i < pairs; i++) {
+      const maleId = marriageAgeMales[i];
+      const femaleId = marriageAgeFemales[i];
+
+      // 更新男性的关系
+      const maleRelationship = this.world.getComponent<RelationshipComponent>(maleId, ComponentType.Relationship);
+      if (maleRelationship) {
+        this.world.updateComponent(maleId, ComponentType.Relationship, {
+          partnerId: femaleId,
+        });
+      }
+
+      // 更新女性的关系
+      const femaleRelationship = this.world.getComponent<RelationshipComponent>(femaleId, ComponentType.Relationship);
+      if (femaleRelationship) {
+        this.world.updateComponent(femaleId, ComponentType.Relationship, {
+          partnerId: maleId,
+        });
+      }
+
+      // 随机添加孩子
+      this.addRandomChildren(maleId, femaleId, currentMonth);
+    }
+  }
+
+  /**
+   * 随机添加初始孩子
+   */
+  private addRandomChildren(maleId: string, femaleId: string, currentMonth: number): void {
+    const maleIdentity = this.world.getComponent<IdentityComponent>(maleId, ComponentType.Identity);
+    const femaleIdentity = this.world.getComponent<IdentityComponent>(femaleId, ComponentType.Identity);
+
+    if (!maleIdentity || !femaleIdentity) return;
+
+    const maleAge = this.calculateAge(maleIdentity.birthMonth, currentMonth);
+    const femaleAge = this.calculateAge(femaleIdentity.birthMonth, currentMonth);
+
+    // 只有年龄合适的夫妇才会有孩子
+    if (maleAge >= 25 && femaleAge >= 25) {
+      const childrenCount = Math.floor(Math.random() * 3); // 0-2个孩子
+
+      for (let i = 0; i < childrenCount; i++) {
+        const childAge = Math.floor(Math.random() * Math.min(maleAge - 20, femaleAge - 18));
+
+        if (childAge > 0) {
+          // 创建孩子
+          const childId = this.createBaby(maleId, femaleId, currentMonth - childAge * 12);
+
+          // 更新孩子的年龄
+          const childIdentity = this.world.getComponent<IdentityComponent>(childId, ComponentType.Identity);
+          if (childIdentity) {
+            this.world.updateComponent(childId, ComponentType.Identity, {
+              birthMonth: currentMonth - childAge * 12,
+            });
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * 计算年龄
+   */
+  private calculateAge(birthMonth: number, currentMonth: number): number {
+    return (currentMonth - birthMonth) / GAME_CONSTANTS.MONTHS_PER_YEAR;
   }
 }

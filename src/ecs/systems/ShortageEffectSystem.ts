@@ -101,8 +101,8 @@ export class ShortageEffectSystem extends System {
 
     // 检查是否有教师
     const hasTeacher = entities.some(entity => {
-      const occupation = entity.getComponent?.(ComponentType.Occupation);
-      const biological = entity.getComponent?.(ComponentType.Biological);
+      const occupation = world.getComponent(entity.id, ComponentType.Occupation);
+      const biological = world.getComponent(entity.id, ComponentType.Biological);
       return (
         occupation?.occupation === 'scientist' &&
         biological?.isAlive

@@ -52,10 +52,12 @@ export class MoneySystem extends System {
   private calculateIncome(entities: any[], currentMonth: number): number {
     let income = 0;
 
+    const world = this.getWorld();
+
     entities.forEach(entity => {
-      const biological = entity.getComponent?.(ComponentType.Biological);
-      const identity = entity.getComponent?.(ComponentType.Identity);
-      const occupation = entity.getComponent?.(ComponentType.Occupation);
+      const biological = world.getComponent(entity.id, ComponentType.Biological);
+      const identity = world.getComponent(entity.id, ComponentType.Identity);
+      const occupation = world.getComponent(entity.id, ComponentType.Occupation);
 
       if (!biological || !identity || !occupation || !biological.isAlive) return;
 
@@ -94,9 +96,11 @@ export class MoneySystem extends System {
   private calculateExpense(entities: any[], currentMonth: number): number {
     let expense = 5; // 基础设施维护
 
+    const world = this.getWorld();
+
     const unemployedCount = entities.filter(entity => {
-      const occupation = entity.getComponent?.(ComponentType.Occupation);
-      const biological = entity.getComponent?.(ComponentType.Biological);
+      const occupation = world.getComponent(entity.id, ComponentType.Occupation);
+      const biological = world.getComponent(entity.id, ComponentType.Biological);
       return (
         occupation?.occupation === 'unemployed' &&
         biological?.isAlive
@@ -108,8 +112,8 @@ export class MoneySystem extends System {
 
     // 医疗支出（老年人）
     const elderlyCount = entities.filter(entity => {
-      const identity = entity.getComponent?.(ComponentType.Identity);
-      const biological = entity.getComponent?.(ComponentType.Biological);
+      const identity = world.getComponent(entity.id, ComponentType.Identity);
+      const biological = world.getComponent(entity.id, ComponentType.Biological);
       if (!identity || !biological || !biological.isAlive) return false;
       const age = this.calculateAge(identity.birthMonth, currentMonth);
       return age >= 60;
@@ -119,8 +123,8 @@ export class MoneySystem extends System {
 
     // 教育支出（学生）
     const studentCount = entities.filter(entity => {
-      const identity = entity.getComponent?.(ComponentType.Identity);
-      const biological = entity.getComponent?.(ComponentType.Biological);
+      const identity = world.getComponent(entity.id, ComponentType.Identity);
+      const biological = world.getComponent(entity.id, ComponentType.Biological);
       if (!identity || !biological || !biological.isAlive) return false;
       const age = this.calculateAge(identity.birthMonth, currentMonth);
       return age >= 6 && age <= 18;

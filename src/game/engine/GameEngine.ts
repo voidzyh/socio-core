@@ -1,15 +1,54 @@
 /**
  * GameEngine - 游戏引擎
- * 暂时使用原有gameStore逻辑，ECS系统保留待后续集成
+ * ECS架构：使用World协调所有Systems
  */
 
 import { useGameStore } from '../../store/gameStore';
 import { useUIStore } from '../../store/uiStore';
+import { GAME_CONSTANTS } from '../../constants/game';
 import { TimeSystem } from './TimeSystem';
 import { EventSystem } from './EventSystem';
 import { GameEndingSystem } from './GameEndingSystem';
 
+// ECS核心
+import { World } from '../../ecs/core/World';
+import { EntityFactory } from '../../ecs/utils/EntityFactory';
+import { SyncManager } from '../../ecs/sync/SyncManager';
+import { EventManager } from '../../ecs/events/EventManager';
+
+// ECS Stores
+import { usePersonStore } from '../../ecs/stores/PersonStore';
+import { useResourceStore } from '../../ecs/stores/ResourceStore';
+import { useStatisticsStore } from '../../ecs/stores/StatisticsStore';
+
+// ECS Systems
+import {
+  PopulationSystem,
+  AgingSystem,
+  BirthSystem,
+  DeathSystem,
+  MarriageSystem,
+  ResourceSystem,
+  FoodSystem,
+  MoneySystem,
+  ShortageEffectSystem,
+  PolicySystem,
+  PolicyEffectSystem,
+  StatisticsSystem,
+  AchievementSystem,
+} from '../../ecs/systems';
+
+// 类型
+import { ComponentType } from '../../ecs/components/PersonComponents';
+import type { Person } from '../../store/types';
+
 export class GameEngine {
+  // ECS核心
+  private world: World;
+  private entityFactory: EntityFactory;
+  private syncManager: SyncManager;
+  private eventManager: EventManager;
+
   // 原有系统
   private timeSystem: TimeSystem;
   private eventSystem: EventSystem;
@@ -21,10 +60,125 @@ export class GameEngine {
   private ticksProcessed: number = 0;
 
   constructor() {
-    // 初始化系统
+    // 初始化ECS World
+    this.world = new World();
+    this.entityFactory = new EntityFactory(this.world);
+    this.syncManager = new SyncManager(this.world);
+    this.eventManager = new EventManager(this.world);
+    this.initializeECSSystems();
+
+    // 初始化原有系统
     this.timeSystem = new TimeSystem(() => this.onTick());
     this.eventSystem = new EventSystem();
     this.endingSystem = new GameEndingSystem();
+
+    // 监听ECS事件并同步到gameStore
+    this.setupECSEventListeners();
+
+    // 初始化ECS人口（使用EntityFactory）
+    this.initializeECSPopulation();
+  }
+
+  /**
+   * 初始化所有ECS Systems
+   */
+  private initializeECSSystems(): void {
+    // 人口系统
+    this.world.addSystem(new PopulationSystem());
+    this.world.addSystem(new AgingSystem());
+    this.world.addSystem(new BirthSystem());
+    this.world.addSystem(new DeathSystem());
+    this.world.addSystem(new MarriageSystem());
+
+    // 资源系统
+    this.world.addSystem(new ResourceSystem());
+    this.world.addSystem(new FoodSystem());
+    this.world.addSystem(new MoneySystem());
+    this.world.addSystem(new ShortageEffectSystem());
+
+    // 政策系统
+    this.world.addSystem(new PolicySystem());
+    this.world.addSystem(new PolicyEffectSystem());
+
+    // 统计与成就
+    this.world.addSystem(new StatisticsSystem());
+    this.world.addSystem(new AchievementSystem());
+  }
+
+  /**
+   * 初始化ECS人口
+   * 从gameStore读取初始人口并创建ECS实体
+   */
+  private initializeECSPopulation(): void {
+    const state = useGameStore.getState();
+
+    // 遍历gameStore中的初始人口，为每个Person创建ECS实体
+    state.people.forEach((person: Person) => {
+      this.entityFactory.createPersonFromData(person);
+    });
+  }
+
+  /**
+   * 设置ECS事件监听器
+   * 监听ECS Systems发出的事件并同步到ECS Stores和gameStore
+   */
+  private setupECSEventListeners(): void {
+    const eventBus = this.world.getEventBus();
+
+    // 监听出生事件
+    eventBus.on('person:born', (data: any) => {
+      // 同步到ECS Stores
+      useStatisticsStore.getState().recordBirth();
+
+      // 兼容：同步到gameStore
+      useGameStore.getState().recordBirth();
+    });
+
+    // 监听死亡事件
+    eventBus.on('person:died', (data: any) => {
+      // 同步到ECS Stores
+      useStatisticsStore.getState().recordDeath();
+
+      // 兼容：同步到gameStore
+      useGameStore.getState().recordDeath();
+    });
+
+    // 监听资源更新事件
+    eventBus.on('resources:updated', (data: any) => {
+      const resources = data.resources;
+
+      // 同步到ECS Stores
+      useResourceStore.getState().updateResources({
+        food: resources.food || 0,
+        money: resources.money || 0,
+        education: resources.education || 0,
+        medicine: resources.medicine || 0,
+      });
+
+      // 兼容：同步到gameStore
+      this.syncManager.syncResources({
+        food: resources.food || 0,
+        money: resources.money || 0,
+      });
+    });
+
+    // 监听食物计算事件
+    eventBus.on('food:calculated', (data: any) => {
+      // 更新短缺状态
+      const hasShortage = data.balance < 0;
+      useResourceStore.getState().updateShortageStatus({
+        food: hasShortage,
+      });
+    });
+
+    // 监听资金计算事件
+    eventBus.on('money:calculated', (data: any) => {
+      // 更新短缺状态
+      const hasShortage = data.balance < 0;
+      useResourceStore.getState().updateShortageStatus({
+        money: hasShortage,
+      });
+    });
   }
 
   start(): void {
@@ -56,6 +210,55 @@ export class GameEngine {
   }
 
   /**
+   * 同步ECS数据到ECS Stores和gameStore（UI兼容层）
+   */
+  private syncToUI(): void {
+    // 同步人口数据到ECS PersonStore
+    const entities = this.world.getEntities();
+    const peopleMap = new Map<string, Person>();
+
+    for (const entity of entities) {
+      const identity = this.world.getComponent<any>(entity.id, ComponentType.Identity);
+      const biological = this.world.getComponent<any>(entity.id, ComponentType.Biological);
+      const cognitive = this.world.getComponent<any>(entity.id, ComponentType.Cognitive);
+      const relationship = this.world.getComponent<any>(entity.id, ComponentType.Relationship);
+      const occupation = this.world.getComponent<any>(entity.id, ComponentType.Occupation);
+
+      if (!identity || !biological || !cognitive || !relationship || !occupation) {
+        continue;
+      }
+
+      // 计算年龄
+      const currentMonth = this.world.getTotalMonths();
+      const age = (currentMonth - identity.birthMonth) / GAME_CONSTANTS.MONTHS_PER_YEAR;
+
+      // 转换childrenIds Set为数组
+      const childrenArray = Array.from(relationship.childrenIds || []) as string[];
+
+      const person: Person = {
+        id: entity.id,
+        age,
+        gender: identity.gender as 'male' | 'female',
+        health: biological.health,
+        education: cognitive.education,
+        fertility: biological.fertility,
+        isAlive: biological.isAlive,
+        children: childrenArray,
+        occupation: occupation.occupation,
+        partner: relationship.partnerId,
+      };
+
+      peopleMap.set(entity.id, person);
+    }
+
+    // 更新ECS PersonStore
+    usePersonStore.getState().setPeople(peopleMap);
+
+    // 使用SyncManager将ECS数据同步到gameStore（兼容层）
+    this.syncManager.syncToStore();
+  }
+
+  /**
    * 调试信息：获取引擎状态
    */
   getDebugInfo() {
@@ -71,7 +274,7 @@ export class GameEngine {
 
   /**
    * 游戏主循环Tick
-   * 暂时使用原有逻辑，ECS系统后续集成
+   * ECS架构：World.update()协调所有Systems
    */
   private onTick(): void {
     const state = useGameStore.getState();
@@ -87,22 +290,29 @@ export class GameEngine {
     const skipEndingCheck = this.ticksProcessed < 12;
 
     // 1. 检查随机事件
-    const randomEvent = this.eventSystem.checkAndTriggerEvent(state.totalMonths);
+    const randomEvent = this.eventSystem.checkAndTriggerEvent(this.world.getTotalMonths());
     if (randomEvent) {
       this.applyEvent(randomEvent);
     }
 
-    // 2. 推进时间（1个月）
+    // 2. 推进时间（1个月）- 同时更新World和gameStore
+    this.world.advanceTime(1);
     useGameStore.getState().advanceTime(1);
 
-    // 3. 使用原有逻辑处理人口和资源
-    this.processPopulation();
-    this.processResources();
+    // 3. ECS Systems处理游戏逻辑（已激活）
+    this.world.update(1.0); // deltaTime = 1.0 (1个月)
 
-    // 4. 更新UI
+    // 4. 同步ECS数据到gameStore（保持UI兼容）
+    this.syncToUI();
+
+    // 5. 原有逻辑已禁用（ECS接管）
+    // this.processPopulation();
+    // this.processResources();
+
+    // 6. 更新UI
     this.updateUIState();
 
-    // 5. 检查游戏结束条件
+    // 7. 检查游戏结束条件
     if (!skipEndingCheck) {
       this.updateFailureCounters();
       const newState = useGameStore.getState();
@@ -198,7 +408,7 @@ export class GameEngine {
     const baby = {
       id: `person-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
       age: 0,
-      gender,
+      gender: gender as 'male' | 'female',
       health: 70 + Math.random() * 30,
       education: 0,
       fertility: 0,
@@ -541,5 +751,92 @@ export class GameEngine {
     this.ticksProcessed = 0;
     this.timeSystem.reset();
     this.eventSystem.reset();
+
+    // 重置ECS World
+    this.world.resetTime();
+    // 注意：这里不重置实体，因为resetGame会重新创建gameStore状态
+    // 下次initializeECSPopulation会重新创建ECS实体
+  }
+
+  // ========== UI事件处理公开方法 ==========
+
+  /**
+   * 处理政策激活
+   */
+  handlePolicyActivation(policyId: string): void {
+    this.eventManager.handlePolicyActivation(policyId);
+  }
+
+  /**
+   * 处理政策停用
+   */
+  handlePolicyDeactivation(policyId: string): void {
+    this.eventManager.handlePolicyDeactivation(policyId);
+  }
+
+  /**
+   * 处理游戏速度变更
+   */
+  handleGameSpeedChange(speed: 'paused' | '1x' | '2x' | '5x' | '10x'): void {
+    this.eventManager.handleGameSpeedChange(speed);
+  }
+
+  /**
+   * 处理游戏暂停
+   */
+  handleGamePause(): void {
+    this.eventManager.handleGamePause();
+  }
+
+  /**
+   * 处理游戏开始
+   */
+  handleGameStart(): void {
+    this.eventManager.handleGameStart();
+  }
+
+  /**
+   * 处理游戏重置
+   */
+  handleGameReset(): void {
+    // 重置游戏引擎状态
+    this.pause();
+    this.ticksProcessed = 0;
+    this.timeSystem.reset();
+    this.eventSystem.reset();
+
+    // 重置ECS World
+    this.world.resetTime();
+
+    // 清除所有ECS实体
+    const entities = this.world.getEntities();
+    entities.forEach(entity => {
+      this.world.destroyEntity(entity.id);
+    });
+
+    // 重置ECS Stores
+    usePersonStore.getState().reset();
+    useResourceStore.getState().reset();
+    useStatisticsStore.getState().reset();
+
+    // 重新初始化ECS人口（从新的gameStore状态）
+    this.initializeECSPopulation();
+
+    // 触发重置事件
+    this.eventManager.handleGameReset();
+  }
+
+  /**
+   * 处理实体选择
+   */
+  handleEntitySelect(entityId: string): void {
+    this.eventManager.handleEntitySelect(entityId);
+  }
+
+  /**
+   * 处理职业变更
+   */
+  handleOccupationChange(entityId: string, newOccupation: string): void {
+    this.eventManager.handleOccupationChange(entityId, newOccupation);
   }
 }

@@ -52,10 +52,12 @@ export class FoodSystem extends System {
   private calculateProduction(entities: any[], currentMonth: number): number {
     let production = 0;
 
+    const world = this.getWorld();
+
     entities.forEach(entity => {
-      const occupation = entity.getComponent?.(ComponentType.Occupation);
-      const biological = entity.getComponent?.(ComponentType.Biological);
-      const identity = entity.getComponent?.(ComponentType.Identity);
+      const occupation = world.getComponent(entity.id, ComponentType.Occupation);
+      const biological = world.getComponent(entity.id, ComponentType.Biological);
+      const identity = world.getComponent(entity.id, ComponentType.Identity);
 
       if (!occupation || !biological || !identity || !biological.isAlive) return;
 
@@ -86,10 +88,12 @@ export class FoodSystem extends System {
   private calculateConsumption(entities: any[], currentMonth: number): number {
     let consumption = 0;
 
+    const world = this.getWorld();
+
     entities.forEach(entity => {
-      const biological = entity.getComponent?.(ComponentType.Biological);
-      const identity = entity.getComponent?.(ComponentType.Identity);
-      const occupation = entity.getComponent?.(ComponentType.Occupation);
+      const biological = world.getComponent(entity.id, ComponentType.Biological);
+      const identity = world.getComponent(entity.id, ComponentType.Identity);
+      const occupation = world.getComponent(entity.id, ComponentType.Occupation);
 
       if (!biological || !identity || !biological.isAlive) return;
 

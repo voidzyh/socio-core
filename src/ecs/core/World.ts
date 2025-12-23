@@ -21,6 +21,11 @@ export class World {
   private eventBus: EventBus;
   private entityIdCounter: number = 0;
 
+  // 游戏时间状态
+  private currentMonth: number = 0;
+  private currentYear: number = 0;
+  private totalMonths: number = 0;
+
   constructor() {
     this.eventBus = new EventBus();
   }
@@ -231,6 +236,58 @@ export class World {
    */
   getEventBus(): EventBus {
     return this.eventBus;
+  }
+
+  // ========== 时间管理 ==========
+
+  /**
+   * 获取当前月份（0-11）
+   */
+  getCurrentMonth(): number {
+    return this.currentMonth;
+  }
+
+  /**
+   * 获取当前年份
+   */
+  getCurrentYear(): number {
+    return this.currentYear;
+  }
+
+  /**
+   * 获取总月数
+   */
+  getTotalMonths(): number {
+    return this.totalMonths;
+  }
+
+  /**
+   * 推进时间
+   * @param months 要推进的月数
+   */
+  advanceTime(months: number): void {
+    this.totalMonths += months;
+    const newTotalMonth = this.totalMonths;
+    this.currentYear = Math.floor(newTotalMonth / 12);
+    this.currentMonth = newTotalMonth % 12;
+
+    // 发出时间推进事件
+    this.eventBus.emit('time:advanced', {
+      totalMonths: this.totalMonths,
+      currentYear: this.currentYear,
+      currentMonth: this.currentMonth,
+      advancedMonths: months,
+    });
+  }
+
+  /**
+   * 重置时间
+   */
+  resetTime(): void {
+    this.currentMonth = 0;
+    this.currentYear = 0;
+    this.totalMonths = 0;
+    this.eventBus.emit('time:reset', {});
   }
 
   // ========== 工具方法 ==========

@@ -116,7 +116,7 @@ export const usePolicyStore = create<PolicyState & PolicyActions>((set, get) => 
 
     // 停用政策
     const newPolicies = state.policies.map(p =>
-      p.id === policyId ? { ...p, active: false, duration: p.initialDuration } : p
+      p.id === policyId ? { ...p, active: false, duration: p.duration || 0 } : p
     );
 
     set({

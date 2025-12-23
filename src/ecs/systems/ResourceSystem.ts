@@ -87,9 +87,9 @@ export class ResourceSystem extends System {
     let medicineProduction = 0;
 
     entities.forEach(entity => {
-      const occupation = entity.getComponent?.(ComponentType.Occupation);
-      const biological = entity.getComponent?.(ComponentType.Biological);
-      const identity = entity.getComponent?.(ComponentType.Identity);
+      const occupation = world.getComponent(entity.id, ComponentType.Occupation);
+      const biological = world.getComponent(entity.id, ComponentType.Biological);
+      const identity = world.getComponent(entity.id, ComponentType.Identity);
 
       if (!occupation || !biological || !identity || !biological.isAlive) return;
 
@@ -146,10 +146,10 @@ export class ResourceSystem extends System {
     let housingNeeds = 0;
 
     entities.forEach(entity => {
-      const biological = entity.getComponent?.(ComponentType.Biological);
-      const identity = entity.getComponent?.(ComponentType.Identity);
-      const cognitive = entity.getComponent?.(ComponentType.Cognitive);
-      const occupation = entity.getComponent?.(ComponentType.Occupation);
+      const biological = world.getComponent(entity.id, ComponentType.Biological);
+      const identity = world.getComponent(entity.id, ComponentType.Identity);
+      const cognitive = world.getComponent(entity.id, ComponentType.Cognitive);
+      const occupation = world.getComponent(entity.id, ComponentType.Occupation);
 
       if (!biological || !identity || !biological.isAlive) return;
 
@@ -182,7 +182,7 @@ export class ResourceSystem extends System {
 
     // 老年医疗支出
     const elderly = entities.filter(entity => {
-      const identity = entity.getComponent?.(ComponentType.Identity);
+      const identity = world.getComponent(entity.id, ComponentType.Identity);
       if (!identity) return false;
       const age = this.calculateAge(identity.birthMonth, currentMonth);
       return age >= 60;
@@ -420,7 +420,7 @@ export class ResourceSystem extends System {
    * 获取当前月份
    */
   private getCurrentMonth(world: World): number {
-    return (world.getEventBus() as any)['currentMonth'] || 0;
+    return world.getCurrentMonth();
   }
 
   /**

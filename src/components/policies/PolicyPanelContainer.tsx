@@ -1,29 +1,32 @@
 /**
  * PolicyPanelContainer - 容器组件
- * 连接Selector和Store，提供数据给展示组件
+ * 连接ECS Selectors和Store，提供数据给展示组件
  */
 
 import React from 'react';
 import { PolicyPanel } from './PolicyPanel';
 import type { PolicyPanelProps } from './PolicyPanel';
-import { useGameStore } from '../../store/gameStore';
+import { usePolicyStore } from '../../ecs/stores/PolicyStore';
+import { useResources } from '../../ecs/selectors/resourceSelectors';
 
 /**
  * PolicyPanelContainer
  * 容器组件，负责数据获取和状态管理
  */
 export const PolicyPanelContainer: React.FC = () => {
-  // 从gameStore获取数据（ECS暂未集成）
-  const { policies, activePolicies, resources } = useGameStore();
+  // 从ECS Store获取数据
+  const policies = usePolicyStore(state => state.policies);
+  const activePolicies = usePolicyStore(state => state.activePolicies);
+  const resources = useResources();
 
   // 处理政策激活
   const handleActivatePolicy = (policyId: string) => {
-    useGameStore.getState().activatePolicy(policyId);
+    usePolicyStore.getState().activatePolicy(policyId, resources.money);
   };
 
   // 处理政策停用
   const handleDeactivatePolicy = (policyId: string) => {
-    useGameStore.getState().deactivatePolicy(policyId);
+    usePolicyStore.getState().deactivatePolicy(policyId);
   };
 
   // 传递给展示组件的props

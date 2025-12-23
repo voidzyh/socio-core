@@ -9,8 +9,11 @@ import './index.css';
 
 function App() {
   const gameEngineRef = useRef<GameEngine | null>(null);
-  const { gameSpeed, isGameOver, gameStarted, startGame } = useGameStore();
+  const { gameSpeed, isGameOver, gameStarted, startGame, resetGame, totalMonths } = useGameStore();
   const { addNotification } = useUIStore();
+
+  // 追踪上次的totalMonths，用于检测游戏重置
+  const lastTotalMonthsRef = useRef<number>(0);
 
   // 初始化游戏引擎
   useEffect(() => {
@@ -44,6 +47,15 @@ function App() {
       });
     }
   }, [isGameOver, addNotification]);
+
+  // 监听游戏重置（totalMonths从非0变为0）
+  useEffect(() => {
+    if (lastTotalMonthsRef.current > 0 && totalMonths === 0) {
+      // 游戏已重置，重新初始化ECS
+      gameEngineRef.current?.handleGameReset();
+    }
+    lastTotalMonthsRef.current = totalMonths;
+  }, [totalMonths]);
 
   const handleStartGame = () => {
     startGame();

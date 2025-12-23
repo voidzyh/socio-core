@@ -23,14 +23,16 @@ export class PolicyEffectSystem extends System {
     medicineConsumption: 0,
   };
 
+  private unsubscribeFn: (() => void) | null = null;
+
   /**
    * 初始化系统
    */
   initialize(world: World): void {
     super.initialize(world);
 
-    // 监听政策效果事件
-    world.getEventBus().on('policy:effects', (data: any) => {
+    // 监听政策效果事件，保存取消订阅函数
+    this.unsubscribeFn = world.getEventBus().on('policy:effects', (data: any) => {
       this.currentEffects = data.effects;
     });
   }
@@ -90,8 +92,9 @@ export class PolicyEffectSystem extends System {
    */
   cleanup(): void {
     // 取消事件监听
-    if (this.world) {
-      this.world.getEventBus().off('policy:effects');
+    if (this.unsubscribeFn) {
+      this.unsubscribeFn();
+      this.unsubscribeFn = null;
     }
   }
 }

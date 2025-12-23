@@ -18,10 +18,19 @@ import './StatsPanel.css';
 /**
  * 年龄组数据
  */
-interface AgeGroupData {
+interface AgeGroupItem {
   name: string;
   value: number;
   color: string;
+}
+
+/**
+ * 年龄分组数据
+ */
+interface AgeGroupData {
+  children: AgeGroupItem;
+  adults: AgeGroupItem;
+  elderly: AgeGroupItem;
 }
 
 /**
