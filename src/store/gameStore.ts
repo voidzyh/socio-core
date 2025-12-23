@@ -27,6 +27,7 @@ function createInitialPopulation(): Map<string, Person> {
     [occupationDistribution[i], occupationDistribution[j]] = [occupationDistribution[j], occupationDistribution[i]];
   }
 
+  // 先创建所有人
   for (let i = 0; i < GAME_CONSTANTS.INITIAL_POPULATION; i++) {
     const gender = genders[Math.floor(Math.random() * genders.length)];
     const age = Math.floor(
@@ -50,7 +51,51 @@ function createInitialPopulation(): Map<string, Person> {
       isAlive: true,
       children: [],
       occupation,
+      partner: undefined, // 初始未配对
     });
+  }
+
+  // 配对婚姻：将适龄的男女配对
+  const males = Array.from(people.values()).filter(p => p.gender === 'male' && p.age >= 20 && p.age <= 50);
+  const females = Array.from(people.values()).filter(p => p.gender === 'female' && p.age >= 20 && p.age <= 45);
+
+  const pairs = Math.min(males.length, females.length);
+  for (let i = 0; i < pairs; i++) {
+    const male = males[i];
+    const female = females[i];
+
+    // 双向配对
+    male.partner = female.id;
+    female.partner = male.id;
+
+    // 随机添加1-3个孩子（年龄合适的情况）
+    if (male.age >= 25 && female.age >= 25) {
+      const childrenCount = Math.floor(Math.random() * 3);
+      for (let j = 0; j < childrenCount; j++) {
+        const childAge = Math.floor(Math.random() * Math.min(male.age - 20, female.age - 18));
+        if (childAge > 0) {
+          const childGender = genders[Math.floor(Math.random() * genders.length)];
+          const childId = `person-${GAME_CONSTANTS.INITIAL_POPULATION + i * 3 + j}`;
+
+          const child: Person = {
+            id: childId,
+            age: childAge,
+            gender: childGender,
+            health: 60 + Math.random() * 40,
+            education: 0,
+            fertility: 0,
+            isAlive: true,
+            children: [],
+            occupation: 'unemployed',
+            partner: undefined,
+          };
+
+          people.set(childId, child);
+          male.children.push(childId);
+          female.children.push(childId);
+        }
+      }
+    }
   }
 
   return people;
