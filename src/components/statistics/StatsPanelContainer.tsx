@@ -6,7 +6,7 @@
 import React from 'react';
 import { StatsPanel } from './StatsPanel';
 import type { StatsPanelProps } from './StatsPanel';
-import { useGameStore } from '../../store/gameStore';
+import { useGameStateStore } from '../../ecs/stores/GameStateStore';
 import { useAgeGroups, usePopulationCount, usePopulationStats } from '../../ecs/selectors/personSelectors';
 import { useStatisticsStore } from '../../ecs/stores/StatisticsStore';
 
@@ -15,8 +15,8 @@ import { useStatisticsStore } from '../../ecs/stores/StatisticsStore';
  * 容器组件，负责数据获取和状态管理
  */
 export const StatsPanelContainer: React.FC = () => {
-  // 从gameStore获取时间信息（暂时保留，后续迁移到ECS TimeSystem）
-  const { currentYear } = useGameStore();
+  // 从ECS GameStateStore获取时间信息
+  const { currentYear } = useGameStateStore();
 
   // 从ECS Selectors获取数据
   const ageGroups = useAgeGroups();

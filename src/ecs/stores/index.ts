@@ -6,3 +6,4 @@ export * from './PersonStore';
 export * from './ResourceStore';
 export * from './PolicyStore';
 export * from './StatisticsStore';
+export * from './GameStateStore';

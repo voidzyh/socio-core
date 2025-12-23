@@ -1,11 +1,14 @@
 import React from 'react';
-import { useGameStore } from '../../store/gameStore';
+import { useGameStateStore } from '../../ecs/stores/GameStateStore';
+import { usePopulationCount } from '../../ecs/selectors/personSelectors';
+import { useResources } from '../../ecs/selectors/resourceSelectors';
 import { useUIStore } from '../../store/uiStore';
-import { SPEED_MULTIPLIERS } from '../../constants/game';
 import './Header.css';
 
 export const Header: React.FC = () => {
-  const { currentYear, currentMonth, gameSpeed, populationCount, resources, setGameSpeed, pauseGame, startGame } = useGameStore();
+  const { currentYear, currentMonth, gameSpeed, setGameSpeed, pauseGame, startGame } = useGameStateStore();
+  const populationCount = usePopulationCount();
+  const resources = useResources();
   const { togglePolicyPanel, toggleStatsPanel, toggleAchievementsPanel } = useUIStore();
 
   const speeds: Array<'paused' | '1x' | '2x' | '5x' | '10x'> = ['paused', '1x', '2x', '5x', '10x'];
