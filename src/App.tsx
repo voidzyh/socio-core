@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { GameEngine } from './game/engine/GameEngine';
 import { GameLayout } from './components/layout/GameLayout';
-import { PopulationCanvas } from './components/canvas/PopulationCanvas';
+import { PopulationCanvasContainer } from './components/canvas/PopulationCanvasContainer';
 import { GameEndingModal } from './components/gameending/GameEndingModal';
 import { useGameStore } from './store/gameStore';
 import { useUIStore } from './store/uiStore';
@@ -74,7 +74,7 @@ function App() {
           </div>
         </div>
       ) : (
-        <PopulationCanvas />
+        <PopulationCanvasContainer />
       )}
 
       {/* 游戏结局界面 */}

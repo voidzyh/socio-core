@@ -1,13 +1,38 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { useGameStore } from '../../store/gameStore';
-import { useUIStore } from '../../store/uiStore';
 import { CANVAS_CONSTANTS } from '../../constants/game';
+import type { Person } from '../../store/types';
 import './PopulationCanvas.css';
 
-export const PopulationCanvas: React.FC = () => {
+/**
+ * PopulationCanvas Props - 展示组件接口
+ */
+export interface PopulationCanvasProps {
+  // 数据
+  people: Person[];
+  livingCount: number;
+  deadCount: number;
+
+  // 交互回调
+  onPersonSelect: (id: string | null) => void;
+  onPersonHover: (person: Person | null) => void;
+
+  // 悬停状态
+  hoveredPerson: Person | null;
+}
+
+/**
+ * PopulationCanvas - 展示组件
+ * 纯UI组件，无Store依赖
+ */
+export const PopulationCanvas: React.FC<PopulationCanvasProps> = ({
+  people,
+  livingCount,
+  deadCount,
+  onPersonSelect,
+  onPersonHover,
+  hoveredPerson,
+}) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const { people, populationCount } = useGameStore();
-  const { hoveredPerson, selectPerson, hoverPerson } = useUIStore();
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
 
   useEffect(() => {
@@ -40,10 +65,8 @@ export const PopulationCanvas: React.FC = () => {
     ctx.fillStyle = CANVAS_CONSTANTS.BACKGROUND_COLOR;
     ctx.fillRect(0, 0, dimensions.width, dimensions.height);
 
-    // 绘制活着的人口
-    const livingPeople = Array.from(people.values()).filter(p => p.isAlive);
-
-    livingPeople.forEach((person, index) => {
+    // 绘制人口
+    people.forEach((person, index) => {
       const x = (index % 50) * 15 + 20;
       const y = Math.floor(index / 50) * 15 + 20;
 
@@ -73,21 +96,6 @@ export const PopulationCanvas: React.FC = () => {
       ctx.fill();
       ctx.closePath();
     });
-
-    // 绘制死亡人口（灰色，较小）
-    const deadPeople = Array.from(people.values()).filter(p => !p.isAlive);
-    const deadIndexStart = livingPeople.length;
-
-    deadPeople.forEach((person, index) => {
-      const x = ((deadIndexStart + index) % 50) * 15 + 20;
-      const y = Math.floor((deadIndexStart + index) / 50) * 15 + 20;
-
-      ctx.beginPath();
-      ctx.arc(x, y, 3, 0, Math.PI * 2);
-      ctx.fillStyle = CANVAS_CONSTANTS.COLOR_DEAD;
-      ctx.fill();
-      ctx.closePath();
-    });
   }, [people, dimensions]);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -99,37 +107,36 @@ export const PopulationCanvas: React.FC = () => {
     const y = e.clientY - rect.top;
 
     // 查找鼠标下的人口
-    const livingPeople = Array.from(people.values()).filter(p => p.isAlive);
-    let found: typeof livingPeople[0] | undefined;
+    let found: Person | undefined;
 
-    for (let i = 0; i < livingPeople.length; i++) {
+    for (let i = 0; i < people.length; i++) {
       const px = (i % 50) * 15 + 20;
       const py = Math.floor(i / 50) * 15 + 20;
       const distance = Math.sqrt((x - px) ** 2 + (y - py) ** 2);
 
       if (distance <= 8) {
-        found = livingPeople[i];
+        found = people[i];
         break;
       }
     }
 
     if (found) {
-      hoverPerson(found);
+      onPersonHover(found);
     } else {
-      hoverPerson(null);
+      onPersonHover(null);
     }
   };
 
   const handleClick = () => {
     if (hoveredPerson) {
-      selectPerson(hoveredPerson.id);
+      onPersonSelect(hoveredPerson.id);
     } else {
-      selectPerson(null);
+      onPersonSelect(null);
     }
   };
 
   const handleMouseLeave = () => {
-    hoverPerson(null);
+    onPersonHover(null);
   };
 
   return (
@@ -171,13 +178,9 @@ export const PopulationCanvas: React.FC = () => {
 
       {/* 统计信息 */}
       <div className="canvas-stats">
-        <div className="stat-item">总人口: {populationCount}</div>
-        <div className="stat-item">
-          存活: {Array.from(people.values()).filter(p => p.isAlive).length}
-        </div>
-        <div className="stat-item">
-          死亡: {Array.from(people.values()).filter(p => !p.isAlive).length}
-        </div>
+        <div className="stat-item">总人口: {livingCount + deadCount}</div>
+        <div className="stat-item">存活: {livingCount}</div>
+        <div className="stat-item">死亡: {deadCount}</div>
       </div>
     </div>
   );

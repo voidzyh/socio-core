@@ -1,8 +1,8 @@
 import React from 'react';
 import { Header } from './Header';
 import { useUIStore } from '../../store/uiStore';
-import { PolicyPanel } from '../policies/PolicyPanel';
-import { StatsPanel } from '../statistics/StatsPanel';
+import { PolicyPanelContainer } from '../policies/PolicyPanelContainer';
+import { StatsPanelContainer } from '../statistics/StatsPanelContainer';
 import { AchievementsPanel } from '../achievements/AchievementsPanel';
 import { EventNotification } from '../events/EventNotification';
 import './GameLayout.css';
@@ -23,8 +23,8 @@ export const GameLayout: React.FC<GameLayoutProps> = ({ children }) => {
 
         {/* 侧边面板 */}
         <aside className="game-sidebar">
-          {showPolicyPanel && <PolicyPanel />}
-          {showStatsPanel && <StatsPanel />}
+          {showPolicyPanel && <PolicyPanelContainer />}
+          {showStatsPanel && <StatsPanelContainer />}
           {showAchievementsPanel && <AchievementsPanel />}
         </aside>
       </main>

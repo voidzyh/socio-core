@@ -1,10 +1,7 @@
 import React from 'react';
-import { useGameStore } from '../../store/gameStore';
 import {
   LineChart,
   Line,
-  BarChart,
-  Bar,
   PieChart,
   Pie,
   Cell,
@@ -15,32 +12,53 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
+import type { GameStatistics } from '../../store/types';
 import './StatsPanel.css';
 
-export const StatsPanel: React.FC = () => {
-  const { statistics, populationCount, currentYear } = useGameStore();
+/**
+ * 年龄组数据
+ */
+interface AgeGroupData {
+  name: string;
+  value: number;
+  color: string;
+}
 
+/**
+ * 指标数据
+ */
+interface MetricData {
+  label: string;
+  value: number | string;
+  unit: string;
+}
+
+/**
+ * StatsPanel Props - 展示组件接口
+ */
+export interface StatsPanelProps {
+  // 数据
+  statistics: GameStatistics;
+  populationCount: number;
+  currentYear: number;
+  ageGroups: AgeGroupData;
+}
+
+/**
+ * StatsPanel - 展示组件
+ * 纯UI组件，无Store依赖
+ */
+export const StatsPanel: React.FC<StatsPanelProps> = ({
+  statistics,
+  populationCount,
+  currentYear,
+  ageGroups,
+}) => {
   // 人口趋势数据
   const populationData = statistics.populationHistory.slice(-20);
 
-  // 年龄分布
-  const livingPeople = useGameStore.getState().people;
-  const ageGroups = [
-    { name: '0-18岁', value: 0, color: '#60a5fa' },
-    { name: '19-60岁', value: 0, color: '#34d399' },
-    { name: '60+岁', value: 0, color: '#fbbf24' },
-  ];
-
-  Array.from(livingPeople.values())
-    .filter(p => p.isAlive)
-    .forEach(p => {
-      if (p.age < 18) ageGroups[0].value++;
-      else if (p.age < 60) ageGroups[1].value++;
-      else ageGroups[2].value++;
-    });
-
   // 关键指标
-  const metrics = [
+  const metrics: MetricData[] = [
     { label: '平均年龄', value: Math.floor(statistics.averageAge), unit: '岁' },
     { label: '平均健康', value: Math.floor(statistics.averageHealth), unit: '' },
     { label: '平均教育', value: statistics.averageEducation.toFixed(1), unit: '' },
@@ -48,6 +66,12 @@ export const StatsPanel: React.FC = () => {
     { label: '总死亡', value: statistics.totalDeaths, unit: '人' },
     { label: '总人口', value: populationCount, unit: '人' },
   ];
+
+  const ageGroupArray = Object.entries(ageGroups).map(([name, data]) => ({
+    name,
+    value: data.value,
+    color: data.color,
+  }));
 
   return (
     <div className="stats-panel">
@@ -101,7 +125,7 @@ export const StatsPanel: React.FC = () => {
         <ResponsiveContainer width="100%" height={180}>
           <PieChart>
             <Pie
-              data={ageGroups}
+              data={ageGroupArray}
               cx="50%"
               cy="50%"
               innerRadius={40}
@@ -109,7 +133,7 @@ export const StatsPanel: React.FC = () => {
               paddingAngle={5}
               dataKey="value"
             >
-              {ageGroups.map((entry, index) => (
+              {ageGroupArray.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={entry.color} />
               ))}
             </Pie>

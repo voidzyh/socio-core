@@ -1,17 +1,39 @@
 import React from 'react';
-import { useGameStore } from '../../store/gameStore';
 import { POLICY_CATEGORY_NAMES, POLICIES_BY_CATEGORY } from '../../constants/policies';
+import type { Policy, Resources } from '../../store/types';
 import './PolicyPanel.css';
 
-export const PolicyPanel: React.FC = () => {
-  const { policies, activePolicies, resources, activatePolicy, deactivatePolicy } = useGameStore();
+/**
+ * PolicyPanel Props - 展示组件接口
+ */
+export interface PolicyPanelProps {
+  // 数据
+  policies: Policy[];
+  activePolicies: string[];
+  resources: Resources;
 
+  // 交互回调
+  onActivatePolicy: (policyId: string) => void;
+  onDeactivatePolicy: (policyId: string) => void;
+}
+
+/**
+ * PolicyPanel - 展示组件
+ * 纯UI组件，无Store依赖
+ */
+export const PolicyPanel: React.FC<PolicyPanelProps> = ({
+  policies,
+  activePolicies,
+  resources,
+  onActivatePolicy,
+  onDeactivatePolicy,
+}) => {
   const handleTogglePolicy = (policyId: string) => {
     const isActive = activePolicies.includes(policyId);
     if (isActive) {
-      deactivatePolicy(policyId);
+      onDeactivatePolicy(policyId);
     } else {
-      activatePolicy(policyId);
+      onActivatePolicy(policyId);
     }
   };
 
