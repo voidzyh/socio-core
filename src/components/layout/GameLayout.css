@@ -1,0 +1,43 @@
+.game-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: #0f172a;
+  overflow: hidden;
+}
+
+.game-main {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.game-content {
+  flex: 1;
+  overflow: auto;
+}
+
+.game-sidebar {
+  width: 350px;
+  overflow-y: auto;
+  background: #1e293b;
+  border-left: 2px solid #334155;
+  padding: 1rem;
+}
+
+.game-sidebar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.game-sidebar::-webkit-scrollbar-track {
+  background: #1e293b;
+}
+
+.game-sidebar::-webkit-scrollbar-thumb {
+  background: #475569;
+  border-radius: 4px;
+}
+
+.game-sidebar::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
