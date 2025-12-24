@@ -6,7 +6,7 @@ export const GAME_CONSTANTS = {
   MAX_YEARS: 100,
   INITIAL_POPULATION: 50,
   INITIAL_AGE_MIN: 18,
-  INITIAL_AGE_MAX: 50,
+  INITIAL_AGE_MAX: 75, // 增加最大年龄，包含更多老年人
 } as const;
 
 // 人口常量
@@ -23,7 +23,7 @@ export const POPULATION_CONSTANTS = {
   MAX_CHILDREN_PER_FAMILY: 5,
 
   // 死亡率
-  BASE_DEATH_RATE: 0.001, // 基础月死亡率 0.1%
+  BASE_DEATH_RATE: 0.005, // 基础月死亡率 0.5%（提高5倍用于测试）
   ELDERLY_DEATH_RATE_MULTIPLIER: 3, // 老年死亡率倍数
   LOW_HEALTH_DEATH_MULTIPLIER: 2, // 低健康死亡率倍数
 

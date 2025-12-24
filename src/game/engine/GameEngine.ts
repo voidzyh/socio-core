@@ -71,7 +71,7 @@ export class GameEngine {
     this.eventSystem = new EventSystem();
     this.endingSystem = new GameEndingSystem();
 
-    // 监听ECS事件并同步到gameStore
+    // 监听ECS事件并同步到ECS Stores
     this.setupECSEventListeners();
 
     // 初始化ECS人口（使用EntityFactory）
@@ -120,15 +120,8 @@ export class GameEngine {
   private setupECSEventListeners(): void {
     const eventBus = this.world.getEventBus();
 
-    // 监听出生事件
-    eventBus.on('person:born', () => {
-      useStatisticsStore.getState().recordBirth();
-    });
-
-    // 监听死亡事件
-    eventBus.on('person:died', () => {
-      useStatisticsStore.getState().recordDeath();
-    });
+    // 注意：出生和死亡事件由StatisticsSystem内部监听，通过syncToUI同步到Store
+    // 不需要在这里重复监听，否则会导致重复计数
 
     // 监听资源更新事件
     eventBus.on('resources:updated', (data: any) => {
@@ -171,6 +164,7 @@ export class GameEngine {
 
       const newUnlocked = useAchievementStore.getState().checkAchievements({
         populationCount: personStore.count,
+        people: personStore.entities,
         resources: resourceStore.resources,
         statistics: useStatisticsStore.getState().statistics,
         currentYear: data.year,
@@ -259,7 +253,7 @@ export class GameEngine {
     // 更新ECS PersonStore
     usePersonStore.getState().setPeople(peopleMap);
 
-    // 同步StatisticsSystem的实时数据到StatisticsStore
+    // 同步StatisticsSystem的完整统计数据到StatisticsStore
     const statisticsSystem = this.world.getSystem<any>('StatisticsSystem');
     if (statisticsSystem) {
       const stats = statisticsSystem.getStatistics();
@@ -267,6 +261,9 @@ export class GameEngine {
         avgAge: stats.averageAge,
         avgHealth: stats.averageHealth,
         avgEducation: stats.averageEducation,
+        totalBirths: stats.totalBirths,
+        totalDeaths: stats.totalDeaths,
+        populationHistory: stats.populationHistory,
       });
     }
   }
@@ -431,10 +428,9 @@ export class GameEngine {
     this.timeSystem.reset();
     this.eventSystem.reset();
 
-    // 重置ECS World
+    // 重置ECS World时间
     this.world.resetTime();
-    // 注意：这里不重置实体，因为resetGame会重新创建gameStore状态
-    // 下次initializeECSPopulation会重新创建ECS实体
+    // 注意：这里不重置实体，因为handleGameReset会重新创建ECS实体
   }
 
   // ========== UI事件处理公开方法 ==========
@@ -484,8 +480,14 @@ export class GameEngine {
     this.timeSystem.reset();
     this.eventSystem.reset();
 
-    // 重置ECS World
+    // 重置ECS World和Systems
     this.world.resetTime();
+
+    // 重置StatisticsSystem（重置内部计数器）
+    const statisticsSystem = this.world.getSystem<any>('StatisticsSystem');
+    if (statisticsSystem && statisticsSystem.reset) {
+      statisticsSystem.reset();
+    }
 
     // 清除所有ECS实体
     const entities = this.world.getEntities();
@@ -499,6 +501,9 @@ export class GameEngine {
     useStatisticsStore.getState().reset();
     useAchievementStore.getState().reset();
     useEventStore.getState().reset();
+
+    // 重置GameStateStore
+    useGameStateStore.getState().resetGame();
 
     // 重新初始化ECS人口
     this.initializeECSPopulation();

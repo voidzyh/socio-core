@@ -243,7 +243,7 @@ export class PolicySystem extends System {
    * 获取当前月份
    */
   private getCurrentMonth(world: World): number {
-    return (world.getEventBus() as any)['currentMonth'] || 0;
+    return world.getTotalMonths();
   }
 }
 
