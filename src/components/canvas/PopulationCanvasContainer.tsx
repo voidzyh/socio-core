@@ -7,7 +7,8 @@ import React from 'react';
 import { PopulationCanvas } from './PopulationCanvas';
 import type { PopulationCanvasProps } from './PopulationCanvas';
 import { useUIStore } from '../../store/uiStore';
-import { useLivingPeople, usePopulationCount, useMaleCount, useFemaleCount } from '../../ecs/selectors/personSelectors';
+import { useLivingPeople, usePopulationCount } from '../../ecs/selectors/personSelectors';
+import { useStatisticsStore } from '../../ecs/stores/StatisticsStore';
 
 /**
  * PopulationCanvasContainer
@@ -17,14 +18,9 @@ export const PopulationCanvasContainer: React.FC = () => {
   // 从ECS Selectors获取数据
   const livingPeople = useLivingPeople();
   const populationCount = usePopulationCount();
-  const maleCount = useMaleCount();
-  const femaleCount = useFemaleCount();
 
-  // 计算死亡人数
-  const deadCount = React.useMemo(
-    () => maleCount + femaleCount - populationCount,
-    [maleCount, femaleCount, populationCount]
-  );
+  // 从StatisticsStore获取死亡人数（正确的数据源）
+  const totalDeaths = useStatisticsStore(state => state.statistics.totalDeaths);
 
   // UI状态和交互
   const { hoveredPerson, selectPerson, hoverPerson } = useUIStore();
@@ -33,7 +29,7 @@ export const PopulationCanvasContainer: React.FC = () => {
   const props: PopulationCanvasProps = {
     people: livingPeople,
     livingCount: populationCount,
-    deadCount,
+    deadCount: totalDeaths,
     onPersonSelect: selectPerson,
     onPersonHover: hoverPerson,
     hoveredPerson,

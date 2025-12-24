@@ -3,13 +3,13 @@ import { GameEngine } from './game/engine/GameEngine';
 import { GameLayout } from './components/layout/GameLayout';
 import { PopulationCanvasContainer } from './components/canvas/PopulationCanvasContainer';
 import { GameEndingModal } from './components/gameending/GameEndingModal';
-import { useGameStore } from './store/gameStore';
+import { useGameStateStore } from './ecs/stores/GameStateStore';
 import { useUIStore } from './store/uiStore';
 import './index.css';
 
 function App() {
   const gameEngineRef = useRef<GameEngine | null>(null);
-  const { gameSpeed, isGameOver, gameStarted, startGame, resetGame, totalMonths } = useGameStore();
+  const { gameSpeed, isGameOver, gameStarted, startGame, totalMonths } = useGameStateStore();
   const { addNotification } = useUIStore();
 
   // 追踪上次的totalMonths，用于检测游戏重置

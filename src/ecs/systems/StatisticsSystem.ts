@@ -21,6 +21,7 @@ export class StatisticsSystem extends System {
   private peopleQuery: Query;
   private statistics: GameStatistics;
   private lastYearRecorded: number = -1;
+  private eventBusUnsubscribers: Array<() => void> = [];
 
   constructor() {
     super();
@@ -31,6 +32,29 @@ export class StatisticsSystem extends System {
 
     // 初始化统计
     this.statistics = this.createInitialStatistics();
+  }
+
+  /**
+   * 初始化系统
+   */
+  initialize(world: World): void {
+    super.initialize(world);
+
+    const eventBus = world.getEventBus();
+
+    // 监听出生事件
+    this.eventBusUnsubscribers.push(
+      eventBus.on('person:born', () => {
+        this.statistics.totalBirths++;
+      })
+    );
+
+    // 监听死亡事件
+    this.eventBusUnsubscribers.push(
+      eventBus.on('person:died', () => {
+        this.statistics.totalDeaths++;
+      })
+    );
   }
 
   /**
@@ -127,20 +151,6 @@ export class StatisticsSystem extends System {
   }
 
   /**
-   * 记录出生
-   */
-  recordBirth(): void {
-    this.statistics.totalBirths++;
-  }
-
-  /**
-   * 记录死亡
-   */
-  recordDeath(): void {
-    this.statistics.totalDeaths++;
-  }
-
-  /**
    * 获取统计
    */
   getStatistics(): GameStatistics {
@@ -177,7 +187,7 @@ export class StatisticsSystem extends System {
    * 获取当前月份
    */
   private getCurrentMonth(world: World): number {
-    return (world.getEventBus() as any)['currentMonth'] || 0;
+    return world.getTotalMonths();
   }
 
   /**
@@ -186,5 +196,14 @@ export class StatisticsSystem extends System {
   reset(): void {
     this.statistics = this.createInitialStatistics();
     this.lastYearRecorded = -1;
+  }
+
+  /**
+   * 清理资源
+   */
+  cleanup(): void {
+    // 取消所有事件监听
+    this.eventBusUnsubscribers.forEach(unsub => unsub());
+    this.eventBusUnsubscribers = [];
   }
 }

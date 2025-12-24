@@ -81,7 +81,7 @@ export class PopulationSystem extends System implements ISystem {
       // 但为了兼容现有系统，我们暂时保留年龄在组件中（如果需要）
 
       // 健康衰减
-      const currentMonth = world.getEventBus()['currentMonth'] || 0; // 从World获取当前月份
+      const currentMonth = world.getTotalMonths(); // 从World获取当前月份
       const age = this.calculateAge(identity.birthMonth, currentMonth);
 
       let health = biological.health;
@@ -113,7 +113,7 @@ export class PopulationSystem extends System implements ISystem {
       if (!identity) return;
 
       // 计算年龄
-      const currentMonth = world.getEventBus()['currentMonth'] || 0;
+      const currentMonth = world.getTotalMonths();
       const age = this.calculateAge(identity.birthMonth, currentMonth);
 
       // 计算死亡率（暂不考虑政策修正，后续通过EventBus获取）
@@ -131,7 +131,7 @@ export class PopulationSystem extends System implements ISystem {
    */
   private processBirth(world: World, entities: any[]): void {
     // 筛选育龄女性
-    const currentMonth = world.getEventBus()['currentMonth'] || 0;
+    const currentMonth = world.getTotalMonths();
 
     const females = entities.filter(entity => {
       const identity = world.getComponent<IdentityComponent>(entity.id, ComponentType.Identity);
@@ -167,7 +167,7 @@ export class PopulationSystem extends System implements ISystem {
    * 处理婚姻
    */
   private processMarriage(world: World, entities: any[]): void {
-    const currentMonth = world.getEventBus()['currentMonth'] || 0;
+    const currentMonth = world.getTotalMonths();
 
     // 筛选适婚未婚者
     const singles = entities.filter(entity => {
@@ -239,7 +239,7 @@ export class PopulationSystem extends System implements ISystem {
     const gender = Math.random() < 0.5 ? 'male' : 'female';
 
     // 当前月份
-    const currentMonth = world.getEventBus()['currentMonth'] || 0;
+    const currentMonth = world.getTotalMonths();
 
     // 添加身份组件
     world.addComponent(baby.id, ComponentType.Identity, {
@@ -310,7 +310,7 @@ export class PopulationSystem extends System implements ISystem {
     // 更新生物特征组件
     world.updateComponent(personId, ComponentType.Biological, {
       isAlive: false,
-      deathMonth: world.getEventBus()['currentMonth'] || 0,
+      deathMonth: world.getTotalMonths(),
     });
 
     // 移除配偶关系

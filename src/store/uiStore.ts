@@ -33,13 +33,25 @@ export const useUIStore = create<UIState & UIActions>((set, get) => ({
 
   hoverPerson: (person) => set({ hoveredPerson: person }),
 
-  // 面板控制
-  togglePolicyPanel: () => set((state) => ({ showPolicyPanel: !state.showPolicyPanel })),
+  // 面板控制 - 互斥显示（只显示一个面板）
+  togglePolicyPanel: () => set(() => ({
+    showPolicyPanel: true,
+    showStatsPanel: false,
+    showAchievementsPanel: false
+  })),
 
-  toggleStatsPanel: () => set((state) => ({ showStatsPanel: !state.showStatsPanel })),
+  toggleStatsPanel: () => set(() => ({
+    showPolicyPanel: false,
+    showStatsPanel: true,
+    showAchievementsPanel: false
+  })),
 
   toggleAchievementsPanel: () =>
-    set((state) => ({ showAchievementsPanel: !state.showAchievementsPanel })),
+    set(() => ({
+      showPolicyPanel: false,
+      showStatsPanel: false,
+      showAchievementsPanel: true
+    })),
 
   setPolicyPanelVisible: (show) => set({ showPolicyPanel: show }),
 

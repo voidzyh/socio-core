@@ -76,11 +76,12 @@ export const StatsPanel: React.FC<StatsPanelProps> = ({
     { label: '总人口', value: populationCount, unit: '人' },
   ];
 
-  const ageGroupArray = Object.entries(ageGroups).map(([name, data]) => ({
-    name,
-    value: data.value,
-    color: data.color,
-  }));
+  // 年龄分布数据 - 使用中文名称
+  const ageGroupArray = [
+    { name: ageGroups.children.name, value: ageGroups.children.value, color: ageGroups.children.color },
+    { name: ageGroups.adults.name, value: ageGroups.adults.value, color: ageGroups.adults.color },
+    { name: ageGroups.elderly.name, value: ageGroups.elderly.value, color: ageGroups.elderly.color },
+  ];
 
   return (
     <div className="stats-panel">
@@ -141,6 +142,9 @@ export const StatsPanel: React.FC<StatsPanelProps> = ({
               outerRadius={60}
               paddingAngle={5}
               dataKey="value"
+              isAnimationActive={true}
+              animationDuration={500}
+              animationBegin={0}
             >
               {ageGroupArray.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={entry.color} />

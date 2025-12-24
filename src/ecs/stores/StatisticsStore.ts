@@ -27,6 +27,9 @@ interface StatisticsActions {
     avgAge: number;
     avgHealth: number;
     avgEducation: number;
+    totalBirths?: number;
+    totalDeaths?: number;
+    populationHistory?: Array<{ year: number; count: number }>;
   }) => void;
 
   // 记录出生
@@ -101,6 +104,10 @@ export const useStatisticsStore = create<StatisticsState & StatisticsActions>((s
         averageAge: data.avgAge,
         averageHealth: data.avgHealth,
         averageEducation: data.avgEducation,
+        // 同步出生和死亡计数（如果有提供）
+        ...(data.totalBirths !== undefined && { totalBirths: data.totalBirths }),
+        ...(data.totalDeaths !== undefined && { totalDeaths: data.totalDeaths }),
+        ...(data.populationHistory !== undefined && { populationHistory: data.populationHistory }),
       },
     });
   },
