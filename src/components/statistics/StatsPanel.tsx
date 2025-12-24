@@ -60,7 +60,7 @@ export interface StatsPanelProps {
 export const StatsPanel: React.FC<StatsPanelProps> = ({
   statistics,
   populationCount,
-  currentYear,
+  currentYear: _currentYear,
   ageGroups,
 }) => {
   // 人口趋势数据

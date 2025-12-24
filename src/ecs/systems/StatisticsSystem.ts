@@ -23,6 +23,10 @@ export class StatisticsSystem extends System {
   private lastYearRecorded: number = -1;
   private eventBusUnsubscribers: Array<() => void> = [];
 
+  // 追踪每年的出生和死亡
+  private birthsThisYear: number = 0;
+  private deathsThisYear: number = 0;
+
   constructor() {
     super();
     this.peopleQuery = new Query([
@@ -46,6 +50,7 @@ export class StatisticsSystem extends System {
     this.eventBusUnsubscribers.push(
       eventBus.on('person:born', () => {
         this.statistics.totalBirths++;
+        this.birthsThisYear++;
       })
     );
 
@@ -53,6 +58,7 @@ export class StatisticsSystem extends System {
     this.eventBusUnsubscribers.push(
       eventBus.on('person:died', () => {
         this.statistics.totalDeaths++;
+        this.deathsThisYear++;
       })
     );
   }
@@ -60,7 +66,7 @@ export class StatisticsSystem extends System {
   /**
    * 每月更新统计
    */
-  update(deltaTime: number): void {
+  update(_deltaTime: number): void {
     const world = this.getWorld();
     const currentMonth = this.getCurrentMonth(world);
     const currentYear = Math.floor(currentMonth / GAME_CONSTANTS.MONTHS_PER_YEAR);
@@ -90,6 +96,22 @@ export class StatisticsSystem extends System {
       year,
       count: livingPeople.length,
     });
+
+    // 更新出生历史
+    this.statistics.birthsHistory.push({
+      year,
+      count: this.birthsThisYear,
+    });
+
+    // 更新死亡历史
+    this.statistics.deathsHistory.push({
+      year,
+      count: this.deathsThisYear,
+    });
+
+    // 重置年度计数器
+    this.birthsThisYear = 0;
+    this.deathsThisYear = 0;
 
     // 发出年度统计事件
     world.getEventBus().emit('statistics:yearly', {
@@ -194,8 +216,22 @@ export class StatisticsSystem extends System {
    * 重置统计
    */
   reset(): void {
-    this.statistics = this.createInitialStatistics();
+    // 重置属性值，不重新创建对象（避免事件监听器闭包问题）
+    const initialStats = this.createInitialStatistics();
+
+    this.statistics.totalBirths = initialStats.totalBirths;
+    this.statistics.totalDeaths = initialStats.totalDeaths;
+    this.statistics.populationHistory = [...initialStats.populationHistory];
+    this.statistics.birthsHistory = [...initialStats.birthsHistory];
+    this.statistics.deathsHistory = [...initialStats.deathsHistory];
+    this.statistics.resourceHistory = [...initialStats.resourceHistory];
+    this.statistics.averageAge = initialStats.averageAge;
+    this.statistics.averageHealth = initialStats.averageHealth;
+    this.statistics.averageEducation = initialStats.averageEducation;
+
     this.lastYearRecorded = -1;
+    this.birthsThisYear = 0;
+    this.deathsThisYear = 0;
   }
 
   /**

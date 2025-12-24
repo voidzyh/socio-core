@@ -11,9 +11,10 @@ export * from './MarriageSystem';
 
 // 资源系统
 export * from './ResourceSystem';
-export * from './FoodSystem';
-export * from './MoneySystem';
-export * from './ShortageEffectSystem';
+// FoodSystem、MoneySystem、ShortageEffectSystem 已合并到 ResourceSystem
+// export * from './FoodSystem';
+// export * from './MoneySystem';
+// export * from './ShortageEffectSystem';
 
 // 政策系统
 export * from './PolicySystem';

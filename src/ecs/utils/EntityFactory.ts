@@ -3,7 +3,7 @@
  * 负责创建ECS实体并附加组件
  */
 
-import { World } from '../core/World';
+import type { World } from '../core/World';
 import { ComponentType } from '../components/PersonComponents';
 import type {
   IdentityComponent,
@@ -20,7 +20,11 @@ import { GAME_CONSTANTS } from '../../constants/game';
  * 提供便捷方法创建完整的ECS实体
  */
 export class EntityFactory {
-  constructor(private world: World) {}
+  private world: World;
+
+  constructor(world: World) {
+    this.world = world;
+  }
 
   /**
    * 从Person数据创建ECS实体
@@ -170,13 +174,41 @@ export class EntityFactory {
       [occupationDistribution[i], occupationDistribution[j]] = [occupationDistribution[j], occupationDistribution[i]];
     }
 
+    // 年龄分布配置（模拟稳定人口结构）
+    const ageDistribution = [
+      { ageRange: [18, 30] as [number, number], weight: 0.4 },    // 40% 青年
+      { ageRange: [31, 50] as [number, number], weight: 0.35 },   // 35% 中年
+      { ageRange: [51, 65] as [number, number], weight: 0.2 },    // 20% 老年
+      { ageRange: [66, 75] as [number, number], weight: 0.05 },   // 5% 超高龄
+    ];
+
+    // 创建年龄池
+    const agePool: number[] = [];
+    ageDistribution.forEach(({ ageRange, weight }) => {
+      const count = Math.floor(GAME_CONSTANTS.INITIAL_POPULATION * weight);
+      for (let i = 0; i < count; i++) {
+        const age = Math.floor(Math.random() * (ageRange[1] - ageRange[0] + 1)) + ageRange[0];
+        agePool.push(age);
+      }
+    });
+
+    // 补齐到目标人口
+    while (agePool.length < GAME_CONSTANTS.INITIAL_POPULATION) {
+      const age = Math.floor(Math.random() * (30 - 18 + 1)) + 18; // 默认青年
+      agePool.push(age);
+    }
+
+    // 打乱年龄池
+    for (let i = agePool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [agePool[i], agePool[j]] = [agePool[j], agePool[i]];
+    }
+
     // 创建人口
     for (let i = 0; i < GAME_CONSTANTS.INITIAL_POPULATION; i++) {
       const entity = this.world.createEntity();
       const gender = genders[Math.floor(Math.random() * genders.length)];
-      const age = Math.floor(
-        Math.random() * (GAME_CONSTANTS.INITIAL_AGE_MAX - GAME_CONSTANTS.INITIAL_AGE_MIN + 1)
-      ) + GAME_CONSTANTS.INITIAL_AGE_MIN;
+      const age = agePool[i];
 
       // 根据职业调整教育水平
       let education = Math.floor(Math.random() * 5);

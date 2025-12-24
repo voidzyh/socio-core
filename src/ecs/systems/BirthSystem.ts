@@ -12,7 +12,8 @@ import {
   type BiologicalComponent,
   type RelationshipComponent,
 } from '../components/PersonComponents';
-import { POPULATION_CONSTANTS, GAME_CONSTANTS } from '../../constants/game';
+import { GAME_CONSTANTS, calculateFertility } from '../../constants/game';
+import { POPULATION } from '../../constants/balance';
 
 /**
  * 生育系统
@@ -36,21 +37,41 @@ export class BirthSystem extends System {
   /**
    * 处理生育
    */
-  update(deltaTime: number): void {
+  update(_deltaTime: number): void {
     const world = this.getWorld();
     const entities = world.query(this.livingPeopleQuery);
 
     // 获取当前月份
     const currentMonth = this.getCurrentMonth(world);
 
+    // 获取政策修正值
+    const policyEffectSystem = world.getSystem('PolicyEffectSystem');
+    const policyFertilityModifier = policyEffectSystem ?
+      (policyEffectSystem as any).getFertilityRateModifier() : 0;
+
     // 筛选育龄女性
     const fertileFemales = this.filterFertileFemales(world, entities, currentMonth);
 
     // 生育判定
     fertileFemales.forEach(femaleEntity => {
-      // 基础生育率5%
-      // 后续可以通过EventBus获取政策修正值
-      const birthChance = POPULATION_CONSTANTS.BASE_FERTILITY_RATE;
+      const identity = world.getComponent<IdentityComponent>(femaleEntity.id, ComponentType.Identity);
+      const biological = world.getComponent<BiologicalComponent>(femaleEntity.id, ComponentType.Biological);
+
+      if (!identity || !biological) return;
+
+      const age = this.calculateAge(identity.birthMonth, currentMonth);
+
+      // 计算生育能力（基于年龄）
+      const fertilityCapacity = calculateFertility(age, identity.gender);
+
+      // 基础生育率 + 政策修正
+      let birthChance = POPULATION.BASE_FERTILITY_RATE + policyFertilityModifier;
+
+      // 应用生育能力修正
+      birthChance *= fertilityCapacity;
+
+      // 确保生育率在合理范围内
+      birthChance = Math.max(0, Math.min(1, birthChance));
 
       if (Math.random() < birthChance) {
         const relationship = world.getComponent<RelationshipComponent>(
@@ -81,10 +102,10 @@ export class BirthSystem extends System {
       return (
         identity.gender === 'female' &&
         biological.isAlive &&
-        age >= POPULATION_CONSTANTS.MIN_AGE_FOR_CHILDBEARING &&
-        age <= POPULATION_CONSTANTS.MAX_AGE_FOR_CHILDBEARING &&
+        age >= POPULATION.MIN_AGE_FOR_CHILDBEARING &&
+        age <= POPULATION.MAX_AGE_FOR_CHILDBEARING &&
         relationship.partnerId && // 已婚
-        relationship.childrenIds.size < POPULATION_CONSTANTS.MAX_CHILDREN_PER_FAMILY
+        relationship.childrenIds.size < POPULATION.MAX_CHILDREN_PER_FAMILY
       );
     });
   }

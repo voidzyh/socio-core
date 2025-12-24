@@ -24,19 +24,30 @@ export class MoneySystem extends System {
       ComponentType.Identity,
       ComponentType.Biological,
       ComponentType.Occupation,
+      ComponentType.Cognitive,
     ]);
   }
 
-  update(deltaTime: number): void {
+  update(_deltaTime: number): void {
     const world = this.getWorld();
     const entities = world.query(this.peopleQuery);
     const currentMonth = this.getCurrentMonth(world);
 
+    // 获取政策修正值
+    const policyEffectSystem = world.getSystem('PolicyEffectSystem');
+    const policyEconomyModifier = policyEffectSystem ?
+      (policyEffectSystem as any).getEconomyModifier() : 0;
+
     // 计算收入
-    const income = this.calculateIncome(entities, currentMonth);
+    let income = this.calculateIncome(entities, currentMonth);
 
     // 计算支出
     const expense = this.calculateExpense(entities, currentMonth);
+
+    // 应用经济政策修正（百分比）
+    if (policyEconomyModifier !== 0) {
+      income *= (1 + policyEconomyModifier);
+    }
 
     // 发出事件
     world.getEventBus().emit('money:calculated', {
@@ -58,28 +69,32 @@ export class MoneySystem extends System {
       const biological = world.getComponent(entity.id, ComponentType.Biological);
       const identity = world.getComponent(entity.id, ComponentType.Identity);
       const occupation = world.getComponent(entity.id, ComponentType.Occupation);
+      const cognitive = world.getComponent(entity.id, ComponentType.Cognitive);
 
       if (!biological || !identity || !occupation || !biological.isAlive) return;
 
       const age = this.calculateAge(identity.birthMonth, currentMonth);
+      const education = cognitive?.education || 0;
 
-      // 税收
+      // 税收（受教育程度影响税收能力）
       if (age >= 19 && age <= 60) {
-        income += 5; // 成年人税收
+        income += 5 + Math.floor(education * 0.5); // 成年人税收，教育10 = +5元
       } else if (age >= 60) {
-        income += 2; // 老年人减税
+        income += 2 + Math.floor(education * 0.3); // 老年人减税，教育10 = +3元
       }
 
-      // 职业产出
+      // 职业产出（教育影响工作效率）
+      const educationBonus = Math.floor(education * 1.2); // 教育10 = +12元
+
       switch (occupation.occupation) {
         case 'worker':
-          income += 15; // 制造业
+          income += 15 + educationBonus; // 制造业
           break;
         case 'scientist':
-          income += 20; // 科研拨款
+          income += 12 + educationBonus * 1.5; // 科研拨款，教育加成更高
           break;
         case 'farmer':
-          income += 3; // 农产品销售
+          income += 3 + Math.floor(education * 0.5); // 农产品销售，教育影响较小
           break;
         case 'unemployed':
           // 不产出
@@ -94,7 +109,11 @@ export class MoneySystem extends System {
    * 计算资金支出
    */
   private calculateExpense(entities: any[], currentMonth: number): number {
+    const population = entities.length;
     let expense = 5; // 基础设施维护
+
+    // 公共服务维护（每人0.5元，随人口增长增加支出压力）
+    expense += population * 0.5;
 
     const world = this.getWorld();
 

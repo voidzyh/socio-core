@@ -1,4 +1,5 @@
-import type { Occupation, Resources, Person } from '../store/types';
+import type { Occupation, Resources } from '../store/types';
+import { POPULATION, DEATH_RATE, BIRTH_RATE } from './balance';
 
 // 游戏时间常量
 export const GAME_CONSTANTS = {
@@ -23,7 +24,7 @@ export const POPULATION_CONSTANTS = {
   MAX_CHILDREN_PER_FAMILY: 5,
 
   // 死亡率
-  BASE_DEATH_RATE: 0.005, // 基础月死亡率 0.5%（提高5倍用于测试）
+  BASE_DEATH_RATE: 0.001, // 基础月死亡率 0.1%（降低至合理水平）
   ELDERLY_DEATH_RATE_MULTIPLIER: 3, // 老年死亡率倍数
   LOW_HEALTH_DEATH_MULTIPLIER: 2, // 低健康死亡率倍数
 
@@ -43,7 +44,7 @@ export const RESOURCE_CONSTANTS = {
   INITIAL_HOUSING: 100,
   INITIAL_MEDICINE: 100,
   INITIAL_EDUCATION: 100,
-  INITIAL_MONEY: 1000,
+  INITIAL_MONEY: 500,  // 降低初始资金，增加初期挑战
 
   // 每月消耗
   FOOD_PER_PERSON: 1,
@@ -101,6 +102,7 @@ export function createInitialResources(): Resources {
     money: RESOURCE_CONSTANTS.INITIAL_MONEY,
     productionRate: {
       food: 0,
+      money: 0,
       research: 0,
     },
   };
@@ -109,13 +111,13 @@ export function createInitialResources(): Resources {
 // 计算生育能力（基于年龄）
 export function calculateFertility(age: number, gender: string): number {
   if (gender !== 'female') return 0;
-  if (age < POPULATION_CONSTANTS.MIN_AGE_FOR_CHILDBEARING) return 0;
-  if (age > POPULATION_CONSTANTS.MAX_AGE_FOR_CHILDBEARING) return 0;
+  if (age < POPULATION.MIN_AGE_FOR_CHILDBEARING) return 0;
+  if (age > POPULATION.MAX_AGE_FOR_CHILDBEARING) return 0;
 
   // 生育能力随年龄变化，峰值在 25-30 岁
-  if (age >= 25 && age <= 30) return 1.0;
-  if (age >= 20 && age < 25) return 0.8;
-  if (age >= 31 && age <= 35) return 0.7;
+  if (age >= BIRTH_RATE.PEAK_AGE_START && age <= BIRTH_RATE.PEAK_AGE_END) return 1.0;
+  if (age >= 20 && age < BIRTH_RATE.PEAK_AGE_START) return 0.8;
+  if (age >= (BIRTH_RATE.PEAK_AGE_END + 1) && age <= 35) return 0.7;
   if (age >= 36 && age <= 40) return 0.4;
   if (age >= 41) return 0.1;
 
@@ -124,17 +126,19 @@ export function calculateFertility(age: number, gender: string): number {
 
 // 计算死亡率（基于年龄和健康）
 export function calculateDeathRate(age: number, health: number): number {
-  let rate = POPULATION_CONSTANTS.BASE_DEATH_RATE;
+  let rate = DEATH_RATE.BASE;
 
-  // 老年死亡率增加
-  if (age >= POPULATION_CONSTANTS.ELDERLY_AGE) {
-    const elderlyYears = age - POPULATION_CONSTANTS.ELDERLY_AGE;
-    rate *= Math.pow(POPULATION_CONSTANTS.ELDERLY_DEATH_RATE_MULTIPLIER, elderlyYears / 10);
+  // 老年死亡率平缓增长（避免指数爆炸）
+  if (age >= POPULATION.ELDERLY_AGE) {
+    const elderlyYears = age - POPULATION.ELDERLY_AGE;
+    rate *= (1 + elderlyYears * 0.1); // 每增加10岁，死亡率翻倍，而非指数增长
   }
 
   // 低健康死亡率增加
   if (health < 30) {
-    rate *= POPULATION_CONSTANTS.LOW_HEALTH_DEATH_MULTIPLIER;
+    rate *= DEATH_RATE.LOW_HEALTH_MULTIPLIER;
+  } else if (health < 50) {
+    rate *= 1.3; // 中低健康稍微增加死亡率
   }
 
   return rate;

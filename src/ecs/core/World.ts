@@ -4,7 +4,8 @@
  */
 
 import { Entity } from './Entity';
-import type { EntityID, ComponentType, Component } from './Entity';
+import type { EntityID, ComponentType } from './Entity';
+import type { Component } from './Component';
 import type { ISystem } from './System';
 import type { Query } from './Query';
 import { EventBus } from './EventBus';

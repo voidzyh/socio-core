@@ -22,7 +22,7 @@ export interface PolicyPanelProps {
  * 纯UI组件，无Store依赖
  */
 export const PolicyPanel: React.FC<PolicyPanelProps> = ({
-  policies,
+  policies: _policies,
   activePolicies,
   resources,
   onActivatePolicy,
@@ -67,6 +67,10 @@ export const PolicyPanel: React.FC<PolicyPanelProps> = ({
                   </div>
 
                   <p className="policy-description">{policy.description}</p>
+
+                  {policy.detail && (
+                    <p className="policy-detail">ℹ️ {policy.detail}</p>
+                  )}
 
                   <div className="policy-meta">
                     <span className="policy-cost">💰 {policy.cost}</span>

@@ -11,18 +11,20 @@ import type { EntityID } from '../core/Entity';
  * 组件类型枚举
  * 用于标识和查询不同类型的组件
  */
-export enum ComponentType {
+export const ComponentType = {
   // 人口基础组件
-  Identity = 'identity',
-  Biological = 'biological',
-  Cognitive = 'cognitive',
-  Relationship = 'relationship',
-  Occupation = 'occupation',
+  Identity: 'identity',
+  Biological: 'biological',
+  Cognitive: 'cognitive',
+  Relationship: 'relationship',
+  Occupation: 'occupation',
 
   // 资源组件
-  Consumption = 'consumption',
-  Production = 'production',
-}
+  Consumption: 'consumption',
+  Production: 'production',
+} as const;
+
+export type ComponentType = (typeof ComponentType)[keyof typeof ComponentType];
 
 // ========== 人口组件定义 ==========
 

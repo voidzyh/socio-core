@@ -124,7 +124,6 @@ export const personSelectors = {
 
   // 完整人口统计
   getPopulationStats: (state: ReturnType<typeof usePersonStore.getState>): PopulationStats => {
-    const living = personSelectors.getLivingPeople(state);
     return {
       total: state.count,
       living: state.livingCount,

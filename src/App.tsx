@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { GameEngine } from './game/engine/GameEngine';
 import { GameLayout } from './components/layout/GameLayout';
 import { PopulationCanvasContainer } from './components/canvas/PopulationCanvasContainer';

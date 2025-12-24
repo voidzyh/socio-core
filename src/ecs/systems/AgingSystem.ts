@@ -11,7 +11,8 @@ import {
   type IdentityComponent,
   type BiologicalComponent,
 } from '../components/PersonComponents';
-import { POPULATION_CONSTANTS, GAME_CONSTANTS } from '../../constants/game';
+import { GAME_CONSTANTS } from '../../constants/game';
+import { HEALTH_SYSTEM, POPULATION } from '../../constants/balance';
 
 /**
  * 老化系统
@@ -34,7 +35,7 @@ export class AgingSystem extends System {
   /**
    * 处理年龄增长和健康衰减
    */
-  update(deltaTime: number): void {
+  update(_deltaTime: number): void {
     const world = this.getWorld();
     const entities = world.query(this.livingPeopleQuery);
 
@@ -51,29 +52,44 @@ export class AgingSystem extends System {
       // 计算年龄
       const age = this.calculateAge(identity.birthMonth, currentMonth);
 
-      // 健康衰减
-      let health = biological.health;
+      // 健康变化：自然恢复 - 年龄衰减
+      let healthChange = 0;
 
+      // 1. 自然恢复（随年龄增长而减弱）
+      if (age < 30) {
+        healthChange += HEALTH_SYSTEM.NATURAL_RECOVERY.YOUNG_0_29;
+      } else if (age < 50) {
+        healthChange += HEALTH_SYSTEM.NATURAL_RECOVERY.MIDDLE_30_49;
+      } else if (age < 70) {
+        healthChange += HEALTH_SYSTEM.NATURAL_RECOVERY.SENIOR_50_69;
+      }
+      // 70岁以上不再自然恢复（HEALTH_SYSTEM.NATURAL_RECOVERY.ELDERLY_70_PLUS = 0）
+
+      // 2. 年龄衰减
       if (age >= 80) {
-        health -= POPULATION_CONSTANTS.HEALTH_DECAY_AGE_80;
+        healthChange -= HEALTH_SYSTEM.AGE_DECAY.VERY_ELDERLY_80_PLUS;
       } else if (age >= 60) {
-        health -= POPULATION_CONSTANTS.HEALTH_DECAY_AGE_60;
+        healthChange -= HEALTH_SYSTEM.AGE_DECAY.ELDERLY_60_PLUS;
       }
 
-      if (health < 0) health = 0;
+      // 应用健康变化
+      let newHealth = biological.health + healthChange;
+
+      // 健康值范围限制
+      newHealth = Math.max(0, Math.min(100, newHealth));
 
       // 更新健康值
-      if (health !== biological.health) {
-        world.updateComponent(entity.id, ComponentType.Biological, { health });
+      if (newHealth !== biological.health) {
+        world.updateComponent(entity.id, ComponentType.Biological, { health: newHealth });
       }
 
       // 更新生育能力（随年龄变化）
       let fertility = biological.fertility;
       if (identity.gender === 'female') {
-        if (age >= POPULATION_CONSTANTS.MIN_AGE_FOR_CHILDBEARING &&
-            age <= POPULATION_CONSTANTS.MAX_AGE_FOR_CHILDBEARING) {
+        if (age >= POPULATION.MIN_AGE_FOR_CHILDBEARING &&
+            age <= POPULATION.MAX_AGE_FOR_CHILDBEARING) {
           // 育龄期，生育能力逐渐达到峰值
-          fertility = Math.min(1.0, (age - 18) / 10);
+          fertility = Math.min(1.0, (age - POPULATION.MIN_AGE_FOR_CHILDBEARING) / 10);
         } else {
           fertility = 0;
         }

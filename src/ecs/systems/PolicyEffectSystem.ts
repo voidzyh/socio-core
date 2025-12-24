@@ -40,7 +40,7 @@ export class PolicyEffectSystem extends System {
   /**
    * 更新系统（可选，如果需要每帧执行逻辑）
    */
-  update(deltaTime: number): void {
+  update(_deltaTime: number): void {
     // 政策效果主要通过EventBus传递
     // 这里可以添加一些持续性效果的应用逻辑
   }

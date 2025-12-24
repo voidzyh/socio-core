@@ -36,12 +36,17 @@ export class DeathSystem extends System {
   /**
    * 处理死亡检查
    */
-  update(deltaTime: number): void {
+  update(_deltaTime: number): void {
     const world = this.getWorld();
     const entities = world.query(this.livingPeopleQuery);
 
     // 获取当前月份
     const currentMonth = this.getCurrentMonth(world);
+
+    // 获取政策修正值
+    const policyEffectSystem = world.getSystem('PolicyEffectSystem');
+    const policyDeathRateModifier = policyEffectSystem ?
+      (policyEffectSystem as any).getDeathRateModifier() : 0;
 
     // 检查每个存活的人
     entities.forEach(entity => {
@@ -54,8 +59,12 @@ export class DeathSystem extends System {
       // 计算年龄
       const age = this.calculateAge(identity.birthMonth, currentMonth);
 
-      // 计算死亡率
-      const deathRate = calculateDeathRate(age, biological.health);
+      // 计算死亡率（基础 + 政策修正）
+      let deathRate = calculateDeathRate(age, biological.health);
+      deathRate += policyDeathRateModifier;
+
+      // 确保死亡率在合理范围内
+      deathRate = Math.max(0, Math.min(1, deathRate));
 
       // 死亡判定
       if (Math.random() < deathRate) {

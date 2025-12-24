@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { useEventStore } from '../../ecs/stores/EventStore';
 import { useUIStore } from '../../store/uiStore';
 import './EventNotification.css';

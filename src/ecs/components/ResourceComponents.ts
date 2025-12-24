@@ -6,7 +6,7 @@
  * 实际的资源组件定义在PersonComponents.ts中
  */
 
-export {
+export type {
   ConsumptionComponent,
   ProductionComponent,
 } from './PersonComponents';

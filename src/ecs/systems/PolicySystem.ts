@@ -41,7 +41,7 @@ export class PolicySystem extends System {
   /**
    * 每月更新政策持续时间
    */
-  update(deltaTime: number): void {
+  update(_deltaTime: number): void {
     const world = this.getWorld();
     const currentMonth = this.getCurrentMonth(world);
 

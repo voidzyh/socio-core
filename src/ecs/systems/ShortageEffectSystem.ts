@@ -25,7 +25,7 @@ export class ShortageEffectSystem extends System {
     ]);
   }
 
-  update(deltaTime: number): void {
+  update(_deltaTime: number): void {
     const world = this.getWorld();
     const entities = world.query(this.peopleQuery);
 
@@ -55,7 +55,7 @@ export class ShortageEffectSystem extends System {
   /**
    * 应用医疗短缺效果
    */
-  applyMedicineShortage(world: World, severity: 'low' | 'medium' | 'high'): void {
+  applyMedicineShortage(world: World, _severity: 'low' | 'medium' | 'high'): void {
     const entities = world.query(this.peopleQuery);
     const currentMonth = this.getCurrentMonth(world);
 

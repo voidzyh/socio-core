@@ -30,9 +30,9 @@ import {
   DeathSystem,
   MarriageSystem,
   ResourceSystem,
-  FoodSystem,
-  MoneySystem,
-  ShortageEffectSystem,
+  // FoodSystem, // 已合并到 ResourceSystem
+  // MoneySystem, // 已合并到 ResourceSystem
+  // ShortageEffectSystem, // 已合并到 ResourceSystem
   PolicySystem,
   PolicyEffectSystem,
   StatisticsSystem,
@@ -90,10 +90,12 @@ export class GameEngine {
     this.world.addSystem(new MarriageSystem());
 
     // 资源系统
+    // ResourceSystem 已包含所有资源的生产、消耗和短缺效果逻辑
+    // FoodSystem、MoneySystem、ShortageEffectSystem 的功能已合并到 ResourceSystem
     this.world.addSystem(new ResourceSystem());
-    this.world.addSystem(new FoodSystem());
-    this.world.addSystem(new MoneySystem());
-    this.world.addSystem(new ShortageEffectSystem());
+    // this.world.addSystem(new FoodSystem()); // 功能已合并到 ResourceSystem
+    // this.world.addSystem(new MoneySystem()); // 功能已合并到 ResourceSystem
+    // this.world.addSystem(new ShortageEffectSystem()); // 功能已合并到 ResourceSystem
 
     // 政策系统
     this.world.addSystem(new PolicySystem());
@@ -134,6 +136,9 @@ export class GameEngine {
       });
     });
 
+    // 注释：FoodSystem 和 MoneySystem 已被移除，以下事件监听器不再需要
+    // ResourceSystem 发出 'resources:updated' 事件，包含所有资源信息
+    /*
     // 监听食物计算事件
     eventBus.on('food:calculated', (data: any) => {
       const hasShortage = data.balance < 0;
@@ -149,6 +154,7 @@ export class GameEngine {
         money: hasShortage,
       });
     });
+    */
 
     // 监听年度统计事件，检查成就并更新历史
     eventBus.on('statistics:yearly', (data: any) => {
@@ -156,15 +162,18 @@ export class GameEngine {
       const personStore = usePersonStore.getState();
 
       // 更新年度统计数据到StatisticsStore
+      const statisticsSystem = this.world.getSystem('StatisticsSystem') as any;
+      const fullStatistics = statisticsSystem ? statisticsSystem.getStatistics() : null;
+
       useStatisticsStore.getState().updateStatistics(
         data.year,
         personStore.count,
-        resourceStore.resources
+        resourceStore.resources,
+        fullStatistics
       );
 
       const newUnlocked = useAchievementStore.getState().checkAchievements({
         populationCount: personStore.count,
-        people: personStore.entities,
         resources: resourceStore.resources,
         statistics: useStatisticsStore.getState().statistics,
         currentYear: data.year,
@@ -253,8 +262,15 @@ export class GameEngine {
     // 更新ECS PersonStore
     usePersonStore.getState().setPeople(peopleMap);
 
+    // 同步资源数据到ResourceStore
+    const resourceSystem = this.world.getSystem('ResourceSystem') as any;
+    if (resourceSystem) {
+      const resources = resourceSystem.getResources();
+      useResourceStore.getState().setResources(resources);
+    }
+
     // 同步StatisticsSystem的完整统计数据到StatisticsStore
-    const statisticsSystem = this.world.getSystem<any>('StatisticsSystem');
+    const statisticsSystem = this.world.getSystem('StatisticsSystem') as any;
     if (statisticsSystem) {
       const stats = statisticsSystem.getStatistics();
       useStatisticsStore.getState().updateRealtimeStats({
@@ -283,7 +299,7 @@ export class GameEngine {
       currentMonth: gameStateStore.currentMonth,
       totalMonths: gameStateStore.totalMonths,
       people: personStore.entities,
-      populationCount: personStore.count,
+      populationCount: personStore.livingCount, // 使用livingCount，只统计存活人口
       resources: resourceStore.resources,
       statistics: statisticsStore.statistics,
       negativeMoneyMonths: gameStateStore.negativeMoneyMonths,
@@ -365,15 +381,20 @@ export class GameEngine {
   private updateFailureCounters(): void {
     const gameStateStore = useGameStateStore.getState();
     const resourceStore = useResourceStore.getState();
-    const statisticsStore = useStatisticsStore.getState();
 
     if (!gameStateStore.gameStarted) return;
+
+    // 判断是否严重资源短缺（用于社会崩溃）
+    const hasSevereShortage =
+      resourceStore.resources.food <= 0 ||  // 食物耗尽
+      resourceStore.resources.money < 0 ||   // 资金为负
+      resourceStore.resources.medicine <= 0; // 医疗耗尽
 
     // 更新各种计数器
     gameStateStore.updateFailureCounters({
       negativeMoney: resourceStore.resources.money < 0,
       noFood: resourceStore.resources.food <= 0,
-      lowHappiness: statisticsStore.statistics.averageHealth < 40,
+      lowHappiness: hasSevereShortage, // 使用资源短缺判断社会不满
     });
   }
 
@@ -484,7 +505,7 @@ export class GameEngine {
     this.world.resetTime();
 
     // 重置StatisticsSystem（重置内部计数器）
-    const statisticsSystem = this.world.getSystem<any>('StatisticsSystem');
+    const statisticsSystem = this.world.getSystem('StatisticsSystem') as any;
     if (statisticsSystem && statisticsSystem.reset) {
       statisticsSystem.reset();
     }

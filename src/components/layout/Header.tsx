@@ -9,7 +9,7 @@ export const Header: React.FC = () => {
   const { currentYear, currentMonth, gameSpeed, setGameSpeed, pauseGame, startGame } = useGameStateStore();
   const populationCount = usePopulationCount();
   const resources = useResources();
-  const { togglePolicyPanel, toggleStatsPanel, toggleAchievementsPanel } = useUIStore();
+  const { togglePolicyPanel, toggleStatsPanel, toggleAchievementsPanel, toggleResourcePanel } = useUIStore();
 
   const speeds: Array<'paused' | '1x' | '2x' | '5x' | '10x'> = ['paused', '1x', '2x', '5x', '10x'];
 
@@ -51,13 +51,28 @@ export const Header: React.FC = () => {
       <div className="header-right">
         <div className="resource-summary">
           <span className="resource-item">👥 {populationCount}</span>
-          <span className="resource-item">🍞 {Math.floor(resources.food)}</span>
-          <span className="resource-item">💰 {Math.floor(resources.money)}</span>
+          <span className="resource-item">
+            🍞 {Math.floor(resources.food)}
+            {resources.productionRate && resources.productionRate.food !== 0 && (
+              <small className={resources.productionRate.food >= 0 ? 'positive' : 'negative'}>
+                {resources.productionRate.food >= 0 ? '+' : ''}{Math.floor(resources.productionRate.food)}
+              </small>
+            )}
+          </span>
+          <span className="resource-item">
+            💰 {Math.floor(resources.money)}
+            {resources.productionRate && (
+              <small className={resources.productionRate.money >= 0 ? 'positive' : 'negative'}>
+                {resources.productionRate.money >= 0 ? '+' : ''}{Math.floor(resources.productionRate.money)}
+              </small>
+            )}
+          </span>
         </div>
 
         <div className="panel-toggles">
           <button onClick={togglePolicyPanel} title="政策">📋</button>
           <button onClick={toggleStatsPanel} title="统计">📊</button>
+          <button onClick={toggleResourcePanel} title="资源">📦</button>
           <button onClick={toggleAchievementsPanel} title="成就">🏆</button>
         </div>
       </div>

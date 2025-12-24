@@ -3,7 +3,8 @@
  * 用于根据组件类型筛选实体
  */
 
-import type { Entity, ComponentType } from './Entity';
+import type { Entity } from './Entity';
+import type { ComponentType } from './Entity';
 import type { World } from './World';
 
 /**
@@ -12,11 +13,12 @@ import type { World } from './World';
  */
 export class Query {
   private cacheKey: string;
+  private readonly requiredComponents: ComponentType[];
+  private readonly excludedComponents: ComponentType[];
 
-  constructor(
-    private readonly requiredComponents: ComponentType[],
-    private readonly excludedComponents: ComponentType[] = []
-  ) {
+  constructor(requiredComponents: ComponentType[], excludedComponents: ComponentType[] = []) {
+    this.requiredComponents = requiredComponents;
+    this.excludedComponents = excludedComponents;
     // 生成缓存键
     this.cacheKey = this.generateCacheKey();
   }

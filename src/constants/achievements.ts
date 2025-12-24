@@ -13,73 +13,71 @@ export const ACHIEVEMENTS: Achievement[] = [
   {
     id: 'longevity',
     name: '长寿之乡',
-    description: '平均寿命超过 80 岁',
+    description: '平均寿命超过 70 岁',
     icon: '🏆',
     unlocked: false,
     condition: (state) => {
-      const livingPeople = Array.from(state.people.values()).filter(p => p.isAlive);
-      if (livingPeople.length === 0) return false;
-      const avgAge = livingPeople.reduce((sum, p) => sum + p.age, 0) / livingPeople.length;
-      return avgAge >= 80;
+      // 使用统计数据中的平均年龄
+      return state.statistics.averageAge >= 70;
     },
   },
   {
     id: 'economic-prosperity',
     name: '经济繁荣',
-    description: '资金超过 10,000',
+    description: '资金超过 5,000',
     icon: '💰',
     unlocked: false,
-    condition: (state) => state.resources.money >= 10000,
+    condition: (state) => state.resources.money >= 5000,
   },
   {
     id: 'century-foundation',
     name: '百年基业',
-    description: '游戏持续 100 年',
+    description: '游戏持续 50 年',
     icon: '🎂',
     unlocked: false,
-    condition: (state) => state.currentYear >= 100,
+    condition: (state) => state.currentYear >= 50,
   },
   {
     id: 'zero-hunger',
     name: '零饥饿',
-    description: '食物储备超过 1000 且无人饥饿',
+    description: '食物储备超过 500',
     icon: '🍎',
     unlocked: false,
-    condition: (state) => state.resources.food >= 1000,
+    condition: (state) => state.resources.food >= 500,
   },
   {
     id: 'education-power',
     name: '教育强国',
-    description: '平均教育水平 > 8',
+    description: '平均教育水平 > 6',
     icon: '📚',
     unlocked: false,
-    condition: (state) => state.statistics.averageEducation >= 8,
+    condition: (state) => state.statistics.averageEducation >= 6,
   },
   {
     id: 'baby-boom',
     name: '人口大爆炸',
-    description: '单年出生人口 > 20',
+    description: '单年出生人口 > 15',
     icon: '👶',
     unlocked: false,
     condition: (state) => {
       const recentYears = state.statistics.birthsHistory.slice(-5);
-      return recentYears.some(year => year.count >= 20);
+      return recentYears.some(year => year.count >= 15);
     },
   },
   {
     id: 'perfect-health',
     name: '健康社会',
-    description: '平均健康值 > 90',
+    description: '平均健康值 > 75',
     icon: '❤️',
     unlocked: false,
-    condition: (state) => state.statistics.averageHealth >= 90,
+    condition: (state) => state.statistics.averageHealth >= 75,
   },
   {
-    id: 'first-birth',
-    name: '新生命',
-    description: '见证第一个新生儿的诞生',
-    icon: '👣',
+    id: 'survivor',
+    name: '幸存者',
+    description: '游戏持续 20 年',
+    icon: '🛡️',
     unlocked: false,
-    condition: (state) => state.statistics.totalBirths >= 1,
+    condition: (state) => state.currentYear >= 20,
   },
 ];

@@ -1,9 +1,18 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useGameStateStore } from '../../ecs/stores/GameStateStore';
+import { useStatisticsStore } from '../../ecs/stores/StatisticsStore';
+import { useEventStore } from '../../ecs/stores/EventStore';
+import { GameTimeline } from '../timeline/GameTimeline';
+import { GameTrendCharts } from '../timeline/GameTrendCharts';
 import './GameEndingModal.css';
+
+type TabType = 'score' | 'timeline' | 'charts';
 
 export const GameEndingModal: React.FC = () => {
   const { gameEnding, resetGame } = useGameStateStore();
+  const statistics = useStatisticsStore((state) => state.statistics);
+  const eventHistory = useEventStore((state) => state.history);
+  const [activeTab, setActiveTab] = useState<TabType>('score');
 
   if (!gameEnding) return null;
 
@@ -49,8 +58,30 @@ export const GameEndingModal: React.FC = () => {
           {gameEnding.description}
         </div>
 
+        {/* 标签页切换 */}
+        <div className="ending-tabs">
+          <button
+            className={`tab-button ${activeTab === 'score' ? 'active' : ''}`}
+            onClick={() => setActiveTab('score')}
+          >
+            📊 评分
+          </button>
+          <button
+            className={`tab-button ${activeTab === 'timeline' ? 'active' : ''}`}
+            onClick={() => setActiveTab('timeline')}
+          >
+            📅 时间轴
+          </button>
+          <button
+            className={`tab-button ${activeTab === 'charts' ? 'active' : ''}`}
+            onClick={() => setActiveTab('charts')}
+          >
+            📈 趋势图
+          </button>
+        </div>
+
         {/* 评分详情 */}
-        {isVictory && (
+        {activeTab === 'score' && isVictory && (
           <div className="ending-score">
             <h3 className="score-title">📊 评分详情</h3>
 
@@ -129,7 +160,7 @@ export const GameEndingModal: React.FC = () => {
         )}
 
         {/* 失败信息 */}
-        {!isVictory && (
+        {activeTab === 'score' && !isVictory && (
           <div className="ending-stats">
             <div className="stat-item">
               <span className="stat-label">生存年数:</span>
@@ -137,9 +168,23 @@ export const GameEndingModal: React.FC = () => {
             </div>
             <div className="stat-item">
               <span className="stat-label">最终人口:</span>
-              <span className="stat-value">{gameEnding.score.survivalYears} 年</span>
+              <span className="stat-value">{gameEnding.score.finalPopulation} 人</span>
             </div>
           </div>
+        )}
+
+        {/* 时间轴 */}
+        {activeTab === 'timeline' && (
+          <GameTimeline
+            statistics={statistics}
+            eventHistory={eventHistory}
+            survivalYears={gameEnding.score.survivalYears}
+          />
+        )}
+
+        {/* 趋势图 */}
+        {activeTab === 'charts' && (
+          <GameTrendCharts statistics={statistics} />
         )}
 
         <div className="ending-actions">

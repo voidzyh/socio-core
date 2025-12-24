@@ -1,0 +1,52 @@
+.game-trend-charts {
+  max-height: 700px;
+  overflow-y: auto;
+}
+
+.charts-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0 0 1rem 0;
+  text-align: center;
+}
+
+.charts-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding-right: 0.5rem;
+}
+
+.chart-section {
+  background: rgba(15, 23, 42, 0.5);
+  border-radius: 0.5rem;
+  padding: 1rem;
+}
+
+.chart-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0 0 0.75rem 0;
+  text-align: center;
+}
+
+/* 滚动条样式 */
+.game-trend-charts::-webkit-scrollbar {
+  width: 6px;
+}
+
+.game-trend-charts::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.5);
+  border-radius: 3px;
+}
+
+.game-trend-charts::-webkit-scrollbar-thumb {
+  background: #475569;
+  border-radius: 3px;
+}
+
+.game-trend-charts::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}

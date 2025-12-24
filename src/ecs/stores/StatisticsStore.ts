@@ -20,7 +20,7 @@ interface StatisticsState {
  */
 interface StatisticsActions {
   // 更新统计数据
-  updateStatistics: (year: number, populationCount: number, resources: any) => void;
+  updateStatistics: (year: number, populationCount: number, resources: any, fullStatistics?: GameStatistics | null) => void;
 
   // 更新实时指标
   updateRealtimeStats: (data: {
@@ -73,7 +73,7 @@ export const useStatisticsStore = create<StatisticsState & StatisticsActions>((s
   lastYearRecorded: -1,
 
   // 更新统计数据
-  updateStatistics: (year, populationCount, resources) => {
+  updateStatistics: (year, populationCount, resources, fullStatistics) => {
     const state = get();
 
     // 只在跨年时更新
@@ -90,6 +90,13 @@ export const useStatisticsStore = create<StatisticsState & StatisticsActions>((s
           ...state.statistics.resourceHistory,
           { year, resources },
         ],
+        // 同步完整的出生和死亡历史
+        ...(fullStatistics && {
+          totalBirths: fullStatistics.totalBirths,
+          totalDeaths: fullStatistics.totalDeaths,
+          birthsHistory: fullStatistics.birthsHistory,
+          deathsHistory: fullStatistics.deathsHistory,
+        }),
       },
       lastYearRecorded: year,
     });

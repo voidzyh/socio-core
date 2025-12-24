@@ -29,7 +29,8 @@ export interface Resources {
   education: number;
   money: number;
   productionRate: {
-    food: number;
+    food: number;  // 净食物变化/月
+    money: number; // 净资金变化/月
     research: number;
   };
 }
@@ -51,6 +52,7 @@ export interface Policy {
   id: string;
   name: string;
   description: string;
+  detail?: string; // 详细说明（可选）
   cost: number;
   effects: PolicyEffects;
   duration?: number;
@@ -176,6 +178,7 @@ export interface GameScore {
     education: number;     // 教育得分 (0-20)
   };
 
+  finalPopulation: number; // 最终人口数量（实际人数）
   achievements: number;    // 成就解锁数量
   survivalYears: number;   // 生存年数
 }
@@ -185,6 +188,7 @@ export interface UIState {
   selectedPersonId: string | null;
   showPolicyPanel: boolean;
   showStatsPanel: boolean;
+  showResourcePanel: boolean;
   showAchievementsPanel: boolean;
   hoveredPerson: Person | null;
   notifications: Notification[];

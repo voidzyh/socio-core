@@ -3,6 +3,7 @@ import { Header } from './Header';
 import { useUIStore } from '../../store/uiStore';
 import { PolicyPanelContainer } from '../policies/PolicyPanelContainer';
 import { StatsPanelContainer } from '../statistics/StatsPanelContainer';
+import { ResourcePanelContainer } from '../resources/ResourcePanelContainer';
 import { AchievementsPanel } from '../achievements/AchievementsPanel';
 import { EventNotification } from '../events/EventNotification';
 import './GameLayout.css';
@@ -12,7 +13,7 @@ interface GameLayoutProps {
 }
 
 export const GameLayout: React.FC<GameLayoutProps> = ({ children }) => {
-  const { showPolicyPanel, showStatsPanel, showAchievementsPanel } = useUIStore();
+  const { showPolicyPanel, showStatsPanel, showResourcePanel, showAchievementsPanel } = useUIStore();
 
   return (
     <div className="game-layout">
@@ -25,6 +26,7 @@ export const GameLayout: React.FC<GameLayoutProps> = ({ children }) => {
         <aside className="game-sidebar">
           {showPolicyPanel && <PolicyPanelContainer />}
           {showStatsPanel && <StatsPanelContainer />}
+          {showResourcePanel && <ResourcePanelContainer />}
           {showAchievementsPanel && <AchievementsPanel />}
         </aside>
       </main>

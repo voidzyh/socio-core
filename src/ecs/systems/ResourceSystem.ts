@@ -9,6 +9,7 @@ import { Query } from '../core/Query';
 import { ComponentType } from '../components/PersonComponents';
 import type { Resources } from '../../store/types';
 import { RESOURCE_CONSTANTS, GAME_CONSTANTS } from '../../constants/game';
+import { RESOURCE_CONSUMPTION, RESOURCE_PRODUCTION } from '../../constants/balance';
 
 /**
  * 资源系统
@@ -38,6 +39,7 @@ export class ResourceSystem extends System {
       money: RESOURCE_CONSTANTS.INITIAL_MONEY,
       productionRate: {
         food: 0,
+        money: 0,
         research: 0,
       },
     };
@@ -46,7 +48,7 @@ export class ResourceSystem extends System {
   /**
    * 每月更新资源
    */
-  update(deltaTime: number): void {
+  update(_deltaTime: number): void {
     const world = this.getWorld();
     const entities = world.query(this.livingPeopleQuery);
 
@@ -100,16 +102,16 @@ export class ResourceSystem extends System {
       switch (occupation.occupation) {
         case 'farmer':
           foodProduction += this.calculateFarmerFoodProduction(entity, age, biological.health);
-          moneyIncome += 3; // 农产品销售
+          moneyIncome += RESOURCE_PRODUCTION.OCCUPATION.FARMER.MONEY_INCOME;
           break;
         case 'worker':
-          foodProduction += 3; // 副业产出
-          moneyIncome += 15; // 制造业
+          foodProduction += RESOURCE_PRODUCTION.OCCUPATION.WORKER.SIDE_FOOD;
+          moneyIncome += RESOURCE_PRODUCTION.OCCUPATION.WORKER.MONEY_INCOME;
           break;
         case 'scientist':
-          moneyIncome += 20; // 科研拨款
-          educationProduction += 2;
-          medicineProduction += 0.5;
+          moneyIncome += RESOURCE_PRODUCTION.OCCUPATION.SCIENTIST.MONEY_INCOME;
+          educationProduction += RESOURCE_PRODUCTION.OCCUPATION.SCIENTIST.EDUCATION_PRODUCTION;
+          medicineProduction += RESOURCE_PRODUCTION.OCCUPATION.SCIENTIST.MEDICINE_PRODUCTION;
           break;
         case 'unemployed':
           // 不生产
@@ -140,7 +142,7 @@ export class ResourceSystem extends System {
     housing: number;
   } {
     let foodConsumption = 0;
-    let moneyExpense = 5; // 基础设施维护
+    let moneyExpense = RESOURCE_CONSUMPTION.INFRASTRUCTURE; // 基础设施维护
     let educationConsumption = 0;
     let medicineConsumption = 0;
     let housingNeeds = 0;
@@ -148,7 +150,6 @@ export class ResourceSystem extends System {
     entities.forEach(entity => {
       const biological = world.getComponent(entity.id, ComponentType.Biological);
       const identity = world.getComponent(entity.id, ComponentType.Identity);
-      const cognitive = world.getComponent(entity.id, ComponentType.Cognitive);
       const occupation = world.getComponent(entity.id, ComponentType.Occupation);
 
       if (!biological || !identity || !biological.isAlive) return;
@@ -160,15 +161,15 @@ export class ResourceSystem extends System {
 
       // 教育消耗
       if (age >= 6 && age <= 18) {
-        educationConsumption += 0.5;
+        educationConsumption += RESOURCE_CONSUMPTION.EDUCATION.STUDENT;
       }
 
       // 医疗消耗
       if (age >= 60) {
-        medicineConsumption += 0.5;
+        medicineConsumption += RESOURCE_CONSUMPTION.MEDICINE.ELDERLY;
       }
       if (biological.health < 40) {
-        medicineConsumption += 1;
+        medicineConsumption += RESOURCE_CONSUMPTION.MEDICINE.SICK;
       }
 
       // 住房需求
@@ -176,7 +177,7 @@ export class ResourceSystem extends System {
 
       // 资金支出
       if (occupation?.occupation === 'unemployed') {
-        moneyExpense += 2; // 失业救济金
+        moneyExpense += RESOURCE_CONSUMPTION.UNEMPLOYMENT_BENEFIT;
       }
     });
 
@@ -187,7 +188,7 @@ export class ResourceSystem extends System {
       const age = this.calculateAge(identity.birthMonth, currentMonth);
       return age >= 60;
     }).length;
-    moneyExpense += elderly * 1;
+    moneyExpense += elderly * RESOURCE_CONSUMPTION.ELDERLY_MEDICAL_COST;
 
     return {
       food: foodConsumption,
@@ -219,8 +220,9 @@ export class ResourceSystem extends System {
       education: Math.round(newEducation * 10) / 10,
       housing: this.currentResources.housing, // 住房单独管理
       productionRate: {
-        food: production.food,
-        research: 0, // 后续计算
+        food: production.food - consumption.food,  // 净食物变化
+        money: production.money - consumption.money,  // 净资金变化
+        research: 0, // 暂无研究系统
       },
     };
   }
@@ -236,17 +238,23 @@ export class ResourceSystem extends System {
   ): void {
     // 计算净资源
     const netFood = production.food - consumption.food;
-    const netMedicine = production.medicine - consumption.medicine;
     const netHousing = this.currentResources.housing - consumption.housing;
 
-    // 食物短缺影响
+    // 食物短缺影响（当月不足）
     if (netFood < 0) {
       this.applyFoodShortageEffect(world, entities);
+    } else if (netFood > 10) {
+      // 食物充足时，健康恢复加成
+      this.applyFoodAbundanceEffect(world, entities);
     }
 
-    // 医疗不足影响
-    if (netMedicine < 0) {
+    // 医疗不足影响（检查存量而非当月净变化）
+    // 当存量医疗<=0，且当月消耗>生产时才触发
+    if (this.currentResources.medicine <= 0 && consumption.medicine > production.medicine) {
       this.applyMedicineShortageEffect(world, entities);
+    } else if (this.currentResources.medicine > 20) {
+      // 医疗充足时，健康恢复加成
+      this.applyMedicineAbundanceEffect(world, entities);
     }
 
     // 住房不足影响
@@ -322,6 +330,43 @@ export class ResourceSystem extends System {
   }
 
   /**
+   * 应用食物充足的健康恢复效果
+   */
+  private applyFoodAbundanceEffect(world: World, entities: any[]): void {
+    entities.forEach(entity => {
+      const biological = world.getComponent(entity.id, ComponentType.Biological);
+      if (biological && biological.isAlive && biological.health < 100) {
+        // 食物充足时，健康恢复+0.3
+        const newHealth = Math.min(100, biological.health + 0.3);
+        world.updateComponent(entity.id, ComponentType.Biological, { health: newHealth });
+      }
+    });
+  }
+
+  /**
+   * 应用医疗充足的健康恢复效果
+   */
+  private applyMedicineAbundanceEffect(world: World, entities: any[]): void {
+    const currentMonth = this.getCurrentMonth(world);
+
+    entities.forEach(entity => {
+      const biological = world.getComponent(entity.id, ComponentType.Biological);
+      const identity = world.getComponent(entity.id, ComponentType.Identity);
+
+      if (!biological || !identity || !biological.isAlive || biological.health >= 100) return;
+
+      const age = this.calculateAge(identity.birthMonth, currentMonth);
+
+      // 医疗充足时，老人和病人恢复更快
+      if (age >= 60 || biological.health < 60) {
+        const recovery = age >= 80 ? 0.5 : (age >= 60 ? 0.3 : 0.2);
+        const newHealth = Math.min(100, biological.health + recovery);
+        world.updateComponent(entity.id, ComponentType.Biological, { health: newHealth });
+      }
+    });
+  }
+
+  /**
    * 应用教育自动提升
    */
   private applyEducationGrowth(world: World, entities: any[]): void {
@@ -364,20 +409,21 @@ export class ResourceSystem extends System {
   /**
    * 计算农民食物产出
    */
-  private calculateFarmerFoodProduction(entity: any, age: number, health: number): number {
-    let baseProduction = 8;
+  private calculateFarmerFoodProduction(_entity: any, age: number, health: number): number {
+    let baseProduction = RESOURCE_PRODUCTION.OCCUPATION.FARMER.FOOD_BASE;
 
     // 年龄效率
     let ageEfficiency = 1.0;
-    if (age >= 18 && age <= 30) ageEfficiency = 1.2;
-    else if (age >= 51 && age <= 60) ageEfficiency = 0.8;
-    else if (age < 18 || age > 60) ageEfficiency = 0.5;
+    if (age >= 18 && age <= 30) ageEfficiency = RESOURCE_PRODUCTION.OCCUPATION.FARMER.FOOD_AGE_MODIFIER.YOUNG_18_30;
+    else if (age >= 51 && age <= 60) ageEfficiency = RESOURCE_PRODUCTION.OCCUPATION.FARMER.FOOD_AGE_MODIFIER.MIDDLE_51_60;
+    else if (age < 18 || age > 60) ageEfficiency = RESOURCE_PRODUCTION.OCCUPATION.FARMER.FOOD_AGE_MODIFIER.OLD_OTHER;
 
     // 健康效率
     let healthEfficiency = 1.0;
-    if (health > 80) healthEfficiency = 1.2;
-    else if (health < 60) healthEfficiency = 0.7;
-    else if (health < 30) healthEfficiency = 0.4;
+    if (health > 80) healthEfficiency = RESOURCE_PRODUCTION.OCCUPATION.FARMER.HEALTH_MODIFIER.EXCELLENT_80;
+    else if (health >= 60) healthEfficiency = RESOURCE_PRODUCTION.OCCUPATION.FARMER.HEALTH_MODIFIER.NORMAL_60;
+    else if (health >= 30) healthEfficiency = RESOURCE_PRODUCTION.OCCUPATION.FARMER.HEALTH_MODIFIER.POOR_60;
+    else healthEfficiency = RESOURCE_PRODUCTION.OCCUPATION.FARMER.HEALTH_MODIFIER.VERY_POOR_30;
 
     return baseProduction * ageEfficiency * healthEfficiency;
   }
@@ -385,17 +431,17 @@ export class ResourceSystem extends System {
   /**
    * 计算个人食物消耗
    */
-  private calculatePersonFoodConsumption(entity: any, age: number, health: number): number {
-    let baseConsumption = 1.0;
+  private calculatePersonFoodConsumption(_entity: any, age: number, health: number): number {
+    let baseConsumption = RESOURCE_CONSUMPTION.FOOD.BASE;
 
     // 年龄段消耗
-    if (age < 7) baseConsumption = 0.5;
-    else if (age < 13) baseConsumption = 0.7;
-    else if (age < 19) baseConsumption = 0.9;
-    else if (age >= 60) baseConsumption = 0.8;
+    if (age < 7) baseConsumption = RESOURCE_CONSUMPTION.FOOD.CHILD_0_6;
+    else if (age < 13) baseConsumption = RESOURCE_CONSUMPTION.FOOD.CHILD_7_12;
+    else if (age < 19) baseConsumption = RESOURCE_CONSUMPTION.FOOD.CHILD_13_18;
+    else if (age >= 60) baseConsumption = RESOURCE_CONSUMPTION.FOOD.ELDERLY;
 
     // 健康差需要更多营养
-    if (health < 30) baseConsumption += 0.2;
+    if (health < 30) baseConsumption += RESOURCE_CONSUMPTION.FOOD.LOW_HEALTH_BONUS;
 
     return baseConsumption;
   }
@@ -404,9 +450,21 @@ export class ResourceSystem extends System {
    * 获取季节性食物产出修正
    */
   private getSeasonalFoodModifier(month: number): number {
-    // 3-8月春夏，9-2月秋冬
-    const isSpringSummer = month >= 2 && month <= 7;
-    return isSpringSummer ? 1.2 : 0.8;
+    const modifiers = [
+      RESOURCE_PRODUCTION.SEASONAL_MODIFIER.MONTH_1,
+      RESOURCE_PRODUCTION.SEASONAL_MODIFIER.MONTH_2,
+      RESOURCE_PRODUCTION.SEASONAL_MODIFIER.MONTH_3,
+      RESOURCE_PRODUCTION.SEASONAL_MODIFIER.MONTH_4,
+      RESOURCE_PRODUCTION.SEASONAL_MODIFIER.MONTH_5,
+      RESOURCE_PRODUCTION.SEASONAL_MODIFIER.MONTH_6,
+      RESOURCE_PRODUCTION.SEASONAL_MODIFIER.MONTH_7,
+      RESOURCE_PRODUCTION.SEASONAL_MODIFIER.MONTH_8,
+      RESOURCE_PRODUCTION.SEASONAL_MODIFIER.MONTH_9,
+      RESOURCE_PRODUCTION.SEASONAL_MODIFIER.MONTH_10,
+      RESOURCE_PRODUCTION.SEASONAL_MODIFIER.MONTH_11,
+      RESOURCE_PRODUCTION.SEASONAL_MODIFIER.MONTH_12,
+    ];
+    return modifiers[month] || 1.0;
   }
 
   /**

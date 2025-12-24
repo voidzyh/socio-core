@@ -6,7 +6,6 @@
 import { create } from 'zustand';
 import type { Person } from '../../store/types';
 import { GAME_CONSTANTS } from '../../constants/game';
-import type { EntityID } from '../core/Entity';
 
 /**
  * 人口创建数据

@@ -3,11 +3,15 @@
  * 处理UI操作并将其转发到ECS Systems
  */
 
-import { World } from '../core/World';
+import type { World } from '../core/World';
 import { ComponentType } from '../components/PersonComponents';
 
 export class EventManager {
-  constructor(private world: World) {}
+  private world: World;
+
+  constructor(world: World) {
+    this.world = world;
+  }
 
   /**
    * 处理政策激活

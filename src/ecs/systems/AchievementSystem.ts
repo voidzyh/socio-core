@@ -32,7 +32,7 @@ export class AchievementSystem extends System {
   /**
    * 每月检查成就解锁条件
    */
-  update(deltaTime: number): void {
+  update(_deltaTime: number): void {
     const world = this.getWorld();
 
     // 检查每个成就
@@ -106,7 +106,7 @@ export class AchievementSystem extends System {
   /**
    * 检查经济繁荣成就
    */
-  private checkEconomicProsperity(world: World): boolean {
+  private checkEconomicProsperity(_world: World): boolean {
     // 简化实现：检查资金是否超过5000
     // 实际应该从ResourceSystem获取
     return false; // 暂不实现，需要ResourceSystem先运行

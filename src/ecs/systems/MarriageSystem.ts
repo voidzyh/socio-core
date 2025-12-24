@@ -12,7 +12,8 @@ import {
   type BiologicalComponent,
   type RelationshipComponent,
 } from '../components/PersonComponents';
-import { POPULATION_CONSTANTS, GAME_CONSTANTS } from '../../constants/game';
+import { GAME_CONSTANTS } from '../../constants/game';
+import { POPULATION } from '../../constants/balance';
 
 /**
  * 婚姻系统
@@ -36,7 +37,7 @@ export class MarriageSystem extends System {
   /**
    * 处理婚姻
    */
-  update(deltaTime: number): void {
+  update(_deltaTime: number): void {
     const world = this.getWorld();
     const entities = world.query(this.peopleQuery);
 
@@ -60,7 +61,7 @@ export class MarriageSystem extends System {
     // 简化的匹配逻辑
     const pairs = Math.min(singleMales.length, singleFemales.length);
     for (let i = 0; i < pairs; i++) {
-      if (Math.random() < 0.02) { // 2% 概率结婚
+      if (Math.random() < POPULATION.MARRIAGE_RATE) { // 使用配置的结婚概率
         this.marry(world, singleMales[i].id, singleFemales[i].id);
       }
     }
@@ -82,8 +83,8 @@ export class MarriageSystem extends System {
       return (
         biological.isAlive &&
         !relationship.partnerId && // 未婚
-        age >= POPULATION_CONSTANTS.MIN_AGE_FOR_MARRIAGE &&
-        age <= POPULATION_CONSTANTS.MAX_AGE_FOR_MARRIAGE
+        age >= POPULATION.MIN_AGE_FOR_MARRIAGE &&
+        age <= POPULATION.MAX_AGE_FOR_MARRIAGE
       );
     });
   }
